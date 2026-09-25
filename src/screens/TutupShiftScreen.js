@@ -104,13 +104,6 @@ export default function TutupShiftScreen() {
               <Text style={styles.rowVal}>Rp {(shiftSummary?.qrisSales || 0).toLocaleString('id-ID')}</Text>
             </View>
 
-            <View style={[styles.row, { marginTop: 6 }]}>
-              <Text style={styles.rowLabelBold}>Ekspektasi Uang Fisik Laci</Text>
-              <Text style={styles.rowValHighlight}>
-                Rp {(shiftSummary?.expectedPhysicalCash || 0).toLocaleString('id-ID')}
-              </Text>
-            </View>
-
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>
                 💡 Untuk menutup shift kerja, gunakan **Switch Toggle (ON / OFF)** di pojok kanan atas **Halaman Kasir**.

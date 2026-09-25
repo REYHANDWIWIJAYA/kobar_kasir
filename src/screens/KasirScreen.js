@@ -348,14 +348,7 @@ export default function KasirScreen() {
           <View style={styles.shiftModalCard}>
             <Text style={[styles.shiftModalTitle, { color: '#ff4757' }]}>🔒 Tutup Shift (Turn OFF)</Text>
 
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryRowText}>Ekspektasi Uang Fisik Laci:</Text>
-              <Text style={styles.summaryRowVal}>
-                Rp {(closeShiftSummary?.expectedPhysicalCash || 0).toLocaleString('id-ID')}
-              </Text>
-            </View>
-
-            <Text style={styles.shiftModalSub}>Ketik jumlah uang fisik nyata di laci:</Text>
+            <Text style={styles.shiftModalSub}>Ketik jumlah uang fisik nyata di laci saat ini:</Text>
 
             <TextInput
               style={styles.modalInput}
