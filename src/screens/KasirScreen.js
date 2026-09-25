@@ -188,6 +188,18 @@ export default function KasirScreen() {
   });
 
   const addToCart = (product) => {
+    if (!activeShift) {
+      Alert.alert(
+        'Shift Belum Aktif (OFF)',
+        'Status shift saat ini OFF. Silakan aktifkan (ON) shift kerja terlebih dahulu untuk mulai memasukkan pesanan.',
+        [
+          { text: 'Batal', style: 'cancel' },
+          { text: 'Mulai Shift (ON)', onPress: () => setShowStartShiftModal(true) },
+        ]
+      );
+      return;
+    }
+
     const existing = cart.find(item => item.id === product.id);
     if (existing) {
       setCart(cart.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
@@ -207,6 +219,21 @@ export default function KasirScreen() {
 
   const totalHarga = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const totalItem = cart.reduce((sum, item) => sum + item.qty, 0);
+
+  const handleOpenCart = () => {
+    if (!activeShift) {
+      Alert.alert(
+        'Shift Belum Aktif (OFF)',
+        'Status shift saat ini OFF. Silakan aktifkan (ON) shift kerja terlebih dahulu.',
+        [
+          { text: 'Batal', style: 'cancel' },
+          { text: 'Mulai Shift (ON)', onPress: () => setShowStartShiftModal(true) },
+        ]
+      );
+      return;
+    }
+    setShowCart(true);
+  };
 
   const handleCheckout = async (paymentMethod) => {
     if (cart.length === 0) {
@@ -361,6 +388,19 @@ export default function KasirScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Warning Banner Jika Shift Belum ON */}
+      {!activeShift && (
+        <TouchableOpacity
+          style={styles.shiftWarningBanner}
+          activeOpacity={0.8}
+          onPress={() => setShowStartShiftModal(true)}
+        >
+          <Text style={styles.shiftWarningText}>
+            🔒 Shift belum ON! Tekan di sini untuk Mulai Shift & Berjualan.
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Category Pills */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryBar}>
@@ -688,4 +728,19 @@ const styles = StyleSheet.create({
   closeReceiptText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
   cancelReceiptBtn: { backgroundColor: '#ffeaa7', borderRadius: 10, padding: 12, alignItems: 'center', marginTop: 10 },
   cancelReceiptBtnText: { color: '#d63031', fontWeight: 'bold', fontSize: 14 },
+  shiftWarningBanner: {
+    backgroundColor: '#ff4757',
+    marginHorizontal: 10,
+    marginTop: 8,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  shiftWarningText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 13,
+    textAlign: 'center',
+  },
 });
