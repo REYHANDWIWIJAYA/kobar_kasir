@@ -183,15 +183,15 @@ export default function LaporanScreen() {
       return;
     }
 
-    const success = await updatePin(newPinInput);
-    if (success) {
-      setShowChangePinModal(false);
-      setNewPinInput('');
-      if (Platform.OS === 'web') {
-        window.alert(`PIN Owner berhasil diubah! PIN baru Anda: ${newPinInput}`);
-      } else {
-        Alert.alert('Berhasil', `PIN Owner berhasil diubah! PIN baru Anda: ${newPinInput}`);
-      }
+    const pinToSave = newPinInput;
+    await updatePin(pinToSave);
+    setShowChangePinModal(false);
+    setNewPinInput('');
+
+    if (Platform.OS === 'web') {
+      window.alert(`PIN Owner berhasil diubah! PIN baru Anda: ${pinToSave}`);
+    } else {
+      Alert.alert('Berhasil', `PIN Owner berhasil diubah! PIN baru Anda: ${pinToSave}`);
     }
   };
 

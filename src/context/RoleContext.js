@@ -45,8 +45,14 @@ export function RoleProvider({ children }) {
   };
 
   const updatePin = async (newPin) => {
-    setPin(newPin);
-    await AsyncStorage.setItem(KEY_PIN, newPin);
+    try {
+      setPin(newPin);
+      await AsyncStorage.setItem(KEY_PIN, newPin);
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
   };
 
   return (
