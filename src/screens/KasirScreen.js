@@ -52,7 +52,12 @@ export default function KasirScreen() {
   useEffect(() => {
     loadData();
 
-    // Listener Realtime Supabase agar status shift otomatis sinkron di semua HP saat ON/OFF
+    // 1. Timer Auto-Sync 3 Detik (agar HP Owner update otomatis tanpa pindah halaman)
+    const timer = setInterval(() => {
+      loadData();
+    }, 3000);
+
+    // 2. Realtime WebSocket listener dari Supabase
     const channel = supabase
       .channel('shift-sync-kasir')
       .on(
@@ -65,6 +70,7 @@ export default function KasirScreen() {
       .subscribe();
 
     return () => {
+      clearInterval(timer);
       supabase.removeChannel(channel);
     };
   }, []);

@@ -20,6 +20,11 @@ export default function TutupShiftScreen() {
   useEffect(() => {
     loadShiftData();
 
+    // Timer Auto-Sync 3 Detik (agar status shift di HP Owner ter-update otomatis tanpa pindah halaman)
+    const timer = setInterval(() => {
+      loadShiftData();
+    }, 3000);
+
     const channel = supabase
       .channel('shift-sync-owner')
       .on(
@@ -32,6 +37,7 @@ export default function TutupShiftScreen() {
       .subscribe();
 
     return () => {
+      clearInterval(timer);
       supabase.removeChannel(channel);
     };
   }, []);

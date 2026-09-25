@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,14 @@ export default function LaporanScreen() {
   const { isOwner } = useRole();
   const [transactions, setTransactions] = useState([]);
   const [cashEntries, setCashEntries] = useState([]);
+
+  useEffect(() => {
+    loadReportData();
+    const timer = setInterval(() => {
+      loadReportData();
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
