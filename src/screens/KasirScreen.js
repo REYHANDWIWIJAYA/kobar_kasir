@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -35,6 +36,13 @@ export default function KasirScreen() {
   const [physicalCashInput, setPhysicalCashInput] = useState('');
   const [closeShiftSummary, setCloseShiftSummary] = useState(null);
 
+  // Add Product Modal
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [newProdName, setNewProdName] = useState('');
+  const [newProdPrice, setNewProdPrice] = useState('');
+  const [newProdCat, setNewProdCat] = useState('Makanan');
+  const [newProdImage, setNewProdImage] = useState('');
+
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -50,7 +58,6 @@ export default function KasirScreen() {
 
   const handleToggleShift = async () => {
     if (activeShift) {
-      // Toggle OFF -> Confirm closing shift
       const transactions = await StorageService.getTransactions();
       const shiftTrx = transactions.filter(
         t => new Date(t.timestamp) >= new Date(activeShift.startTime)
@@ -73,7 +80,6 @@ export default function KasirScreen() {
       });
       setShowCloseShiftModal(true);
     } else {
-      // Toggle ON -> Confirm starting shift
       setShowStartShiftModal(true);
     }
   };
@@ -116,6 +122,30 @@ export default function KasirScreen() {
       setPhysicalCashInput('');
       setShowCloseShiftModal(false);
     }
+  };
+
+  const handleSaveProduct = async () => {
+    if (!newProdName || !newProdPrice) {
+      Alert.alert('Form Belum Lengkap', 'Masukkan nama menu dan harga produk.');
+      return;
+    }
+
+    const numericPrice = parseNumberInput(newProdPrice);
+    const newProduct = {
+      name: newProdName,
+      price: numericPrice,
+      category: newProdCat || 'Makanan',
+      image: newProdImage || '',
+    };
+
+    await StorageService.addProduct(newProduct);
+    await loadData();
+    setShowAddProductModal(false);
+    setNewProdName('');
+    setNewProdPrice('');
+    setNewProdCat('Makanan');
+    setNewProdImage('');
+    Alert.alert('Berhasil', `Menu "${newProdName}" berhasil ditambahkan!`);
   };
 
   const categories = ['Semua', ...new Set(products.map(p => p.category))];
@@ -186,7 +216,7 @@ export default function KasirScreen() {
 
     const currentTrx = lastTransaction;
 
-    // 1. LANGSUNG TUTUP MODAL & RESET STATE INSTAN (100% Berhasil di Web & Mobile)
+    // 1. LANGSUNG TUTUP MODAL & RESET STATE INSTAN
     setShowReceipt(false);
     setShowCart(false);
     setCart([]);
@@ -279,14 +309,17 @@ export default function KasirScreen() {
         </View>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
+      {/* Search Bar & Button Tambah Produk */}
+      <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
           placeholder="Cari nama produk..."
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
+        <TouchableOpacity style={styles.addMenuBtn} onPress={() => setShowAddProductModal(true)}>
+          <Text style={styles.addMenuBtnText}>+ Menu</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Category Pills */}
@@ -313,9 +346,13 @@ export default function KasirScreen() {
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.productCard} onPress={() => addToCart(item)}>
-            <View style={styles.productImagePlaceholder}>
-              <Text style={styles.productInitial}>{item.name.charAt(0)}</Text>
-            </View>
+            {item.image ? (
+              <Image source={{ uri: item.image }} style={styles.productImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.productImagePlaceholder}>
+                <Text style={styles.productInitial}>{item.name.charAt(0)}</Text>
+              </View>
+            )}
             <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
             <Text style={styles.productPrice}>Rp {item.price.toLocaleString('id-ID')}</Text>
           </TouchableOpacity>
@@ -334,6 +371,60 @@ export default function KasirScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Modal Tambah Menu / Produk Baru */}
+      <Modal visible={showAddProductModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.shiftModalCard}>
+            <Text style={[styles.shiftModalTitle, { color: '#10ac84' }]}>➕ Tambah Menu Baru</Text>
+            <Text style={styles.shiftModalSub}>Masukkan rincian menu makanan/minuman baru toko Anda:</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Nama Menu (e.g. Es Jeruk)"
+              value={newProdName}
+              onChangeText={setNewProdName}
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              keyboardType="numeric"
+              placeholder="Harga Jual (Rp)"
+              value={newProdPrice}
+              onChangeText={(text) => setNewProdPrice(formatNumberInput(text))}
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Kategori (e.g. Makanan / Minuman)"
+              value={newProdCat}
+              onChangeText={setNewProdCat}
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="URL Gambar Produk (opsional)"
+              value={newProdImage}
+              onChangeText={setNewProdImage}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelModalBtn}
+                onPress={() => setShowAddProductModal(false)}
+              >
+                <Text style={styles.cancelModalText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmStartBtn}
+                onPress={handleSaveProduct}
+              >
+                <Text style={styles.confirmBtnText}>SIMPAN MENU</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal Buka Shift (Turn ON) */}
       <Modal visible={showStartShiftModal} transparent animationType="fade">
@@ -459,16 +550,19 @@ const styles = StyleSheet.create({
   headerRightControls: { flexDirection: 'row', alignItems: 'center' },
   cartButtonHeader: { backgroundColor: '#019069', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
   cartButtonText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
-  searchContainer: { padding: 12, backgroundColor: 'white' },
-  searchInput: { backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 },
+  searchRow: { padding: 10, backgroundColor: 'white', flexDirection: 'row', alignItems: 'center' },
+  searchInput: { flex: 1, backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, fontSize: 14, marginRight: 8 },
+  addMenuBtn: { backgroundColor: '#10ac84', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8 },
+  addMenuBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
   categoryBar: { paddingHorizontal: 10, paddingVertical: 8, backgroundColor: 'white', maxHeight: 50 },
   categoryPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f1f2f6', marginRight: 8 },
   categoryPillActive: { backgroundColor: '#10ac84' },
   categoryText: { fontSize: 13, color: '#57606f', fontWeight: '500' },
   categoryTextActive: { color: 'white', fontWeight: 'bold' },
-  productCard: { width: (width / 2) - 16, margin: 8, backgroundColor: 'white', borderRadius: 12, padding: 12, alignItems: 'center', elevation: 2 },
-  productImagePlaceholder: { width: 60, height: 60, backgroundColor: '#ee5253', borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-  productInitial: { color: 'white', fontSize: 24, fontWeight: 'bold' },
+  productCard: { width: (width / 2) - 16, margin: 8, backgroundColor: 'white', borderRadius: 12, padding: 10, alignItems: 'center', elevation: 2 },
+  productImage: { width: 75, height: 75, borderRadius: 10, marginBottom: 8 },
+  productImagePlaceholder: { width: 75, height: 75, backgroundColor: '#ee5253', borderRadius: 37.5, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  productInitial: { color: 'white', fontSize: 26, fontWeight: 'bold' },
   productName: { fontSize: 14, fontWeight: 'bold', textAlign: 'center', color: '#2f3542' },
   productPrice: { fontSize: 13, color: '#10ac84', marginTop: 4, fontWeight: 'bold' },
   cartItem: { flexDirection: 'row', paddingVertical: 14, borderBottomWidth: 1, borderColor: '#f1f2f6', alignItems: 'center' },
@@ -488,8 +582,6 @@ const styles = StyleSheet.create({
   payBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   payBtnQris: { backgroundColor: '#0984e3', padding: 14, borderRadius: 10, alignItems: 'center' },
   payBtnTextQris: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  cancelCartBtn: { backgroundColor: '#ffeaa7', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 },
-  cancelCartBtnText: { color: '#d63031', fontWeight: 'bold', fontSize: 15 },
   bottomCartBar: { position: 'absolute', bottom: 10, left: 10, right: 10, backgroundColor: 'white', padding: 14, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
   bottomCartItems: { fontSize: 13, color: '#747d8c' },
   bottomCartTotal: { fontSize: 17, fontWeight: 'bold', color: '#2f3542' },
@@ -499,10 +591,7 @@ const styles = StyleSheet.create({
   shiftModalCard: { backgroundColor: 'white', borderRadius: 14, padding: 20, width: '100%' },
   shiftModalTitle: { fontSize: 18, fontWeight: 'bold', color: '#2ed573', textAlign: 'center', marginBottom: 8 },
   shiftModalSub: { fontSize: 13, color: '#747d8c', marginBottom: 12 },
-  modalInput: { backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, marginBottom: 14 },
-  summaryBox: { backgroundColor: '#f8f9fa', padding: 12, borderRadius: 8, marginBottom: 12 },
-  summaryRowText: { fontSize: 13, color: '#747d8c' },
-  summaryRowVal: { fontSize: 16, fontWeight: 'bold', color: '#10ac84', marginTop: 2 },
+  modalInput: { backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, marginBottom: 12 },
   discrepancyText: { fontSize: 13, fontWeight: 'bold', color: '#ff4757', marginBottom: 12, textAlign: 'center' },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 },
   cancelModalBtn: { paddingHorizontal: 16, paddingVertical: 10, marginRight: 8 },

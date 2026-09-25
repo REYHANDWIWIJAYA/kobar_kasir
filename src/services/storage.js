@@ -9,13 +9,13 @@ const KEYS = {
 };
 
 export const DEFAULT_PRODUCTS = [
-  { id: '1', name: 'Kopi Susu', price: 15000, category: 'Minuman' },
-  { id: '2', name: 'Roti Bakar', price: 12000, category: 'Makanan' },
-  { id: '3', name: 'Indomie Goreng', price: 10000, category: 'Makanan' },
-  { id: '4', name: 'Kopi Komikat', price: 15000, category: 'Minuman' },
-  { id: '5', name: 'Roti Bans', price: 12000, category: 'Makanan' },
-  { id: '6', name: 'Es Teh Manis', price: 5000, category: 'Minuman' },
-  { id: '7', name: 'Pisang Goreng', price: 8000, category: 'Makanan' },
+  { id: '1', name: 'Kopi Susu', price: 15000, category: 'Minuman', image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=300' },
+  { id: '2', name: 'Roti Bakar', price: 12000, category: 'Makanan', image: 'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?w=300' },
+  { id: '3', name: 'Indomie Goreng', price: 10000, category: 'Makanan', image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300' },
+  { id: '4', name: 'Kopi Komikat', price: 15000, category: 'Minuman', image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=300' },
+  { id: '5', name: 'Roti Bans', price: 12000, category: 'Makanan', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300' },
+  { id: '6', name: 'Es Teh Manis', price: 5000, category: 'Minuman', image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=300' },
+  { id: '7', name: 'Pisang Goreng', price: 8000, category: 'Makanan', image: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300' },
 ];
 
 export const StorageService = {
