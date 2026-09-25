@@ -181,32 +181,19 @@ export default function KasirScreen() {
     setShowReceipt(true);
   };
 
-  const handleCancelCompletedTransaction = () => {
+  const handleCancelCompletedTransaction = async () => {
     if (!lastTransaction) return;
 
     const currentTrx = lastTransaction;
 
-    Alert.alert(
-      '🚫 Batalkan Transaksi Ini?',
-      `Yakin membatalkan transaksi ${currentTrx.id} (Rp ${currentTrx.total.toLocaleString('id-ID')})?\n\nKeterangan pengembalian akan langsung otomatis dicatat di Buku Kas.`,
-      [
-        { text: 'Tidak', style: 'cancel' },
-        {
-          text: 'Ya, Batalkan',
-          style: 'destructive',
-          onPress: async () => {
-            // 1. Langsung tutup modal & reset state secara instan (sama seperti tombol Selesai)
-            setShowReceipt(false);
-            setShowCart(false);
-            setCart([]);
-            setLastTransaction(null);
+    // 1. LANGSUNG TUTUP MODAL & RESET STATE INSTAN (100% Berhasil di Web & Mobile)
+    setShowReceipt(false);
+    setShowCart(false);
+    setCart([]);
+    setLastTransaction(null);
 
-            // 2. Simpan pembatalan transaksi & catat pengembalian ke Buku Kas di background
-            await StorageService.cancelTransaction(currentTrx.id, 'Dibatalkan langsung dari Struk Kasir');
-          },
-        },
-      ]
-    );
+    // 2. Simpan pembatalan & catat pengembalian ke Buku Kas di background
+    await StorageService.cancelTransaction(currentTrx.id, 'Dibatalkan langsung dari Struk Kasir');
   };
 
   const handleCancelCartTransaction = () => {
