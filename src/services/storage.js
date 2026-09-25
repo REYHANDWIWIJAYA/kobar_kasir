@@ -10,13 +10,26 @@ const KEYS = {
 };
 
 export const DEFAULT_PRODUCTS = [
-  { id: '1', name: 'Kopi Susu', price: 15000, category: 'Minuman', image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=300' },
-  { id: '2', name: 'Roti Bakar', price: 12000, category: 'Makanan', image: 'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?w=300' },
-  { id: '3', name: 'Indomie Goreng', price: 10000, category: 'Makanan', image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300' },
-  { id: '4', name: 'Kopi Komikat', price: 15000, category: 'Minuman', image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=300' },
-  { id: '5', name: 'Roti Bans', price: 12000, category: 'Makanan', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300' },
-  { id: '6', name: 'Es Teh Manis', price: 5000, category: 'Minuman', image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=300' },
-  { id: '7', name: 'Pisang Goreng', price: 8000, category: 'Makanan', image: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300' },
+  // --- KOPI ---
+  { id: '1', name: 'Es Kopi Aren', price: 15000, category: 'Kopi', image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=400' },
+  { id: '2', name: 'Kopi Susu', price: 12000, category: 'Kopi', image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=400' },
+  { id: '3', name: 'Ice Americano', price: 10000, category: 'Kopi', image: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=400' },
+  { id: '4', name: 'Kopi Hitam', price: 8000, category: 'Kopi', image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400' },
+
+  // --- NON KOPI ---
+  { id: '5', name: 'Matcha', price: 13000, category: 'Non Kopi', image: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=400' },
+  { id: '6', name: 'Redvelvet', price: 13000, category: 'Non Kopi', image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400' },
+  { id: '7', name: 'Thai Tea', price: 13000, category: 'Non Kopi', image: 'https://images.unsplash.com/photo-1558857563-b371033873b8?w=400' },
+  { id: '8', name: 'Lemon Tea', price: 13000, category: 'Non Kopi', image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400' },
+  { id: '9', name: 'Coklat', price: 13000, category: 'Non Kopi', image: 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400' },
+  { id: '10', name: 'Taro', price: 13000, category: 'Non Kopi', image: 'https://images.unsplash.com/photo-1579954115545-a95591f28bfc?w=400' },
+  { id: '11', name: 'Teh Susu', price: 10000, category: 'Non Kopi', image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=400' },
+  { id: '12', name: 'Extrajos Susu', price: 7000, category: 'Non Kopi', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400' },
+
+  // --- MAKANAN / CEMILAN ---
+  { id: '13', name: 'Pisang Peppe', price: 12000, category: 'Makanan / Cemilan', image: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400' },
+  { id: '14', name: 'Ubi Ungu (Keju/Coklat)', price: 15000, category: 'Makanan / Cemilan', image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=400' },
+  { id: '15', name: 'Pop Mie', price: 10000, category: 'Makanan / Cemilan', image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?w=400' },
 ];
 
 export const StorageService = {
