@@ -181,6 +181,30 @@ export default function KasirScreen() {
     setShowReceipt(true);
   };
 
+  const handleCancelCompletedTransaction = () => {
+    if (!lastTransaction) return;
+
+    Alert.alert(
+      '🚫 Batalkan Transaksi Ini?',
+      `Yakin ingin membatalkan transaksi ${lastTransaction.id} (Rp ${lastTransaction.total.toLocaleString('id-ID')})?\n\nPengembalian uang akan otomatis dicatat sebagai Kas Keluar di laporan Buku Kas.`,
+      [
+        { text: 'Tidak', style: 'cancel' },
+        {
+          text: 'Ya, Batalkan',
+          style: 'destructive',
+          onPress: async () => {
+            await StorageService.cancelTransaction(lastTransaction.id, 'Dibatalkan langsung dari Struk Kasir');
+            setShowReceipt(false);
+            Alert.alert(
+              'Berhasil Dibatalkan',
+              `Transaksi ${lastTransaction.id} dibatalkan dan catatan pengembalian uang sebesar Rp ${lastTransaction.total.toLocaleString('id-ID')} langsung masuk ke Buku Kas!`
+            );
+          },
+        },
+      ]
+    );
+  };
+
   const handleCancelCartTransaction = () => {
     if (cart.length === 0) return;
 
@@ -460,6 +484,10 @@ export default function KasirScreen() {
             <TouchableOpacity style={styles.closeReceiptBtn} onPress={() => setShowReceipt(false)}>
               <Text style={styles.closeReceiptText}>Selesai & Transaksi Baru</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelReceiptBtn} onPress={handleCancelCompletedTransaction}>
+              <Text style={styles.cancelReceiptBtnText}>🚫 Batalkan Transaksi Ini</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -537,4 +565,6 @@ const styles = StyleSheet.create({
   receiptTotalVal: { fontSize: 18, fontWeight: 'bold', color: '#10ac84' },
   closeReceiptBtn: { backgroundColor: '#10ac84', borderRadius: 10, padding: 14, alignItems: 'center', marginTop: 16 },
   closeReceiptText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
+  cancelReceiptBtn: { backgroundColor: '#ffeaa7', borderRadius: 10, padding: 12, alignItems: 'center', marginTop: 10 },
+  cancelReceiptBtnText: { color: '#d63031', fontWeight: 'bold', fontSize: 14 },
 });
