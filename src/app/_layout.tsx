@@ -1,7 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { RoleProvider, useRole } from '../context/RoleContext';
 
-export default function Layout() {
+function TabNavigation() {
+  const { isOwner } = useRole();
+
   return (
     <Tabs
       screenOptions={{
@@ -33,6 +36,7 @@ export default function Layout() {
         name="buku-kas"
         options={{
           title: 'Buku Kas',
+          href: isOwner ? '/buku-kas' : null,
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 18 }}>📖</Text>,
         }}
       />
@@ -40,6 +44,7 @@ export default function Layout() {
         name="tutup-shift"
         options={{
           title: 'Tutup Shift',
+          href: isOwner ? '/tutup-shift' : null,
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 18 }}>🔒</Text>,
         }}
       />
@@ -47,9 +52,18 @@ export default function Layout() {
         name="laporan"
         options={{
           title: 'Laporan',
+          href: isOwner ? '/laporan' : null,
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 18 }}>📊</Text>,
         }}
       />
     </Tabs>
+  );
+}
+
+export default function Layout() {
+  return (
+    <RoleProvider>
+      <TabNavigation />
+    </RoleProvider>
   );
 }

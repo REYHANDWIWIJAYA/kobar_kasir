@@ -12,8 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
+import { useRole } from '../context/RoleContext';
 
 export default function BukuKasScreen() {
+  const { isOwner } = useRole();
   const [entries, setEntries] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [type, setType] = useState('out'); // 'in' or 'out'

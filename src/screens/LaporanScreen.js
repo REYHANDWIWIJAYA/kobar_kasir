@@ -8,8 +8,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
+import { useRole } from '../context/RoleContext';
 
 export default function LaporanScreen() {
+  const { isOwner } = useRole();
   const [transactions, setTransactions] = useState([]);
   const [cashEntries, setCashEntries] = useState([]);
 

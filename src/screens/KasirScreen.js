@@ -16,10 +16,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
 import ShiftToggleSwitch from '../components/ShiftToggleSwitch';
+import { useRole } from '../context/RoleContext';
 
 const { width } = Dimensions.get('window');
 
 export default function KasirScreen() {
+  const { role, isOwner, switchToOwner, switchToKasir } = useRole();
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
@@ -54,6 +59,26 @@ export default function KasirScreen() {
     const shift = await StorageService.getActiveShift();
     setProducts(prods);
     setActiveShift(shift);
+  };
+
+  const handleRoleToggle = () => {
+    if (isOwner) {
+      switchToKasir();
+      Alert.alert('Mode Kasir', 'Kembali ke Mode Kasir. Akses Buku Kas & Laporan dikunci.');
+    } else {
+      setShowPinModal(true);
+    }
+  };
+
+  const handleConfirmPin = async () => {
+    const success = await switchToOwner(pinInput);
+    if (success) {
+      setShowPinModal(false);
+      setPinInput('');
+      Alert.alert('Mode Owner Aktif', 'Selamat datang Owner! Seluruh menu (Buku Kas, Shift, Laporan) telah dibuka.');
+    } else {
+      Alert.alert('PIN Salah', 'PIN Owner tidak cocok. (Default PIN: 1234)');
+    }
   };
 
   const handleToggleShift = async () => {
@@ -285,12 +310,19 @@ export default function KasirScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header dengan Toggle ON/OFF di Pojok Kanan */}
+      {/* Header dengan Switch Role & Toggle ON/OFF */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Kasir Toko</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.headerTitle}>Kasir Toko</Text>
+            <TouchableOpacity style={styles.roleBadge} onPress={handleRoleToggle}>
+              <Text style={styles.roleBadgeText}>
+                {isOwner ? '👑 Owner' : '👤 Mode Kasir'}
+              </Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.headerSub}>
-            Status: {activeShift ? '🟢 SHIFT ON' : '🔴 SHIFT OFF'}
+            Status: {activeShift ? '🟢 SHIFT ON' : '🔴 SHIFT OFF'} | Role: {isOwner ? 'Owner' : 'Kasir'}
           </Text>
         </View>
 
@@ -317,9 +349,11 @@ export default function KasirScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        <TouchableOpacity style={styles.addMenuBtn} onPress={() => setShowAddProductModal(true)}>
-          <Text style={styles.addMenuBtnText}>+ Menu</Text>
-        </TouchableOpacity>
+        {isOwner && (
+          <TouchableOpacity style={styles.addMenuBtn} onPress={() => setShowAddProductModal(true)}>
+            <Text style={styles.addMenuBtnText}>+ Menu</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Category Pills */}
@@ -371,6 +405,40 @@ export default function KasirScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Modal PIN Owner */}
+      <Modal visible={showPinModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.shiftModalCard}>
+            <Text style={[styles.shiftModalTitle, { color: '#10ac84' }]}>🔑 Masukkan PIN Owner</Text>
+            <Text style={styles.shiftModalSub}>Masukkan PIN Owner untuk membuka fitur Buku Kas, Shift & Laporan (Default: 1234):</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              keyboardType="numeric"
+              secureTextEntry
+              placeholder="PIN Owner (Default: 1234)"
+              value={pinInput}
+              onChangeText={setPinInput}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelModalBtn}
+                onPress={() => { setShowPinModal(false); setPinInput(''); }}
+              >
+                <Text style={styles.cancelModalText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmStartBtn}
+                onPress={handleConfirmPin}
+              >
+                <Text style={styles.confirmBtnText}>MASUK OWNER</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal Tambah Menu / Produk Baru */}
       <Modal visible={showAddProductModal} transparent animationType="slide">
@@ -547,6 +615,8 @@ const styles = StyleSheet.create({
   header: { backgroundColor: '#10ac84', padding: 16, paddingTop: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
   headerSub: { color: '#ffffff', fontSize: 12, opacity: 0.9, marginTop: 2 },
+  roleBadge: { backgroundColor: '#019069', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, marginLeft: 8 },
+  roleBadgeText: { color: 'white', fontSize: 11, fontWeight: 'bold' },
   headerRightControls: { flexDirection: 'row', alignItems: 'center' },
   cartButtonHeader: { backgroundColor: '#019069', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
   cartButtonText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
