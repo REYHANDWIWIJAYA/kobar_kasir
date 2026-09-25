@@ -93,7 +93,7 @@ export default function TutupShiftScreen() {
 
             <View style={styles.row}>
               <Text style={styles.rowLabel}>Modal Awal Laci</Text>
-              <Text style={styles.rowVal}>Rp {activeShift.initialCash.toLocaleString('id-ID')}</Text>
+              <Text style={styles.rowVal}>Rp {(activeShift?.initialCash || 0).toLocaleString('id-ID')}</Text>
             </View>
 
             <View style={styles.row}>
@@ -132,27 +132,30 @@ export default function TutupShiftScreen() {
         {/* Riwayat Shift */}
         <Text style={styles.historyTitle}>Riwayat Shift Terakhir</Text>
         {closedShifts.length > 0 ? (
-          closedShifts.map(item => (
-            <View key={item.id} style={styles.historyCard}>
-              <View style={styles.historyHeader}>
-                <Text style={styles.historyCashier}>Shift Selesai ({item.id})</Text>
-                <Text
-                  style={[
-                    styles.historySelisih,
-                    { color: item.discrepancy === 0 ? '#10ac84' : '#ee5253' },
-                  ]}
-                >
-                  Selisih: Rp {item.discrepancy.toLocaleString('id-ID')}
+          closedShifts.map(item => {
+            const discrepancyVal = Number(item.discrepancy || 0);
+            return (
+              <View key={item.id} style={styles.historyCard}>
+                <View style={styles.historyHeader}>
+                  <Text style={styles.historyCashier}>Shift Selesai ({item.id})</Text>
+                  <Text
+                    style={[
+                      styles.historySelisih,
+                      { color: discrepancyVal === 0 ? '#10ac84' : '#ee5253' },
+                    ]}
+                  >
+                    Selisih: Rp {discrepancyVal.toLocaleString('id-ID')}
+                  </Text>
+                </View>
+                <Text style={styles.historySub}>
+                  Waktu: {formatDate(item.startTime)} - {formatDate(item.endTime)}
+                </Text>
+                <Text style={styles.historySub}>
+                  Total Penjualan: Rp {Number(item.totalSales || 0).toLocaleString('id-ID')} (Tunai Rp {Number(item.totalCashSales || 0).toLocaleString('id-ID')} | QRIS Rp {Number(item.totalQrisSales || 0).toLocaleString('id-ID')})
                 </Text>
               </View>
-              <Text style={styles.historySub}>
-                Waktu: {formatDate(item.startTime)} - {formatDate(item.endTime)}
-              </Text>
-              <Text style={styles.historySub}>
-                Total Penjualan: Rp {(item.totalSales || 0).toLocaleString('id-ID')} (Tunai Rp {(item.totalCashSales || 0).toLocaleString('id-ID')} | QRIS Rp {(item.totalQrisSales || 0).toLocaleString('id-ID')})
-              </Text>
-            </View>
-          ))
+            );
+          })
         ) : (
           <Text style={styles.emptyText}>Belum ada riwayat shift yang ditutup</Text>
         )}
