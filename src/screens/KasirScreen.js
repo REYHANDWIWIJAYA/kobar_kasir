@@ -196,38 +196,6 @@ export default function KasirScreen() {
     await StorageService.cancelTransaction(currentTrx.id, 'Dibatalkan langsung dari Struk Kasir');
   };
 
-  const handleCancelCartTransaction = () => {
-    if (cart.length === 0) return;
-
-    Alert.alert(
-      '🚫 Batalkan Pembelian',
-      `Yakin ingin membatalkan pesanan (Rp ${totalHarga.toLocaleString('id-ID')}) dan mencatat keterangannya di Buku Kas?`,
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Ya, Batalkan',
-          style: 'destructive',
-          onPress: async () => {
-            const itemSummary = cart.map(i => `${i.name} (${i.qty})`).join(', ');
-            // Catat Pembatalan di Buku Kas
-            await StorageService.addCashEntry({
-              id: 'CASH-VOID-' + Date.now().toString().slice(-6),
-              timestamp: new Date().toISOString(),
-              type: 'out',
-              category: 'Pembatalan Pembelian',
-              amount: 0,
-              notes: `Batal Pesanan: ${itemSummary} (Total Rp ${totalHarga.toLocaleString('id-ID')})`,
-            });
-
-            setCart([]);
-            setShowCart(false);
-            Alert.alert('Dibatalkan', 'Pesanan dibatalkan dan catatan berhasil masuk ke Buku Kas.');
-          },
-        },
-      ]
-    );
-  };
-
   if (showCart) {
     return (
       <SafeAreaView style={styles.container}>
@@ -278,9 +246,6 @@ export default function KasirScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.payBtnQris} onPress={() => handleCheckout('QRIS')}>
               <Text style={styles.payBtnTextQris}>📱 Bayar QRIS</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelCartBtn} onPress={handleCancelCartTransaction}>
-              <Text style={styles.cancelCartBtnText}>🚫 Batalkan Pembelian</Text>
             </TouchableOpacity>
           </View>
         )}
