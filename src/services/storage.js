@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabaseClient';
 
 const KEYS = {
   TRANSACTIONS: '@kasir_transactions',
@@ -22,10 +23,29 @@ export const StorageService = {
   // --- TRANSACTIONS ---
   async getTransactions() {
     try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('timestamp', { ascending: false });
+
+      if (!error && data) {
+        const formatted = data.map(t => ({
+          ...t,
+          paymentMethod: t.payment_method || t.paymentMethod,
+          cancelReason: t.cancel_reason || t.cancelReason,
+          items: typeof t.items === 'string' ? JSON.parse(t.items) : t.items,
+        }));
+        await AsyncStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(formatted));
+        return formatted;
+      }
+    } catch (e) {
+      console.log('Supabase offline/not configured yet, reading AsyncStorage');
+    }
+
+    try {
       const jsonStr = await AsyncStorage.getItem(KEYS.TRANSACTIONS);
       return jsonStr ? JSON.parse(jsonStr) : [];
     } catch (e) {
-      console.error('Error reading transactions', e);
       return [];
     }
   },
@@ -35,6 +55,20 @@ export const StorageService = {
       const existing = await this.getTransactions();
       const updated = [transaction, ...existing];
       await AsyncStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(updated));
+
+      // Sync ke Supabase Database
+      await supabase.from('transactions').insert([
+        {
+          id: transaction.id,
+          timestamp: transaction.timestamp,
+          items: transaction.items,
+          total: transaction.total,
+          payment_method: transaction.paymentMethod,
+          cashier: transaction.cashier,
+          status: transaction.status || 'SUCCESS',
+        },
+      ]);
+
       return updated;
     } catch (e) {
       console.error('Error saving transaction', e);
@@ -47,21 +81,29 @@ export const StorageService = {
       const targetTrx = transactions.find(t => t.id === transactionId);
       if (!targetTrx || targetTrx.status === 'CANCELLED') return null;
 
-      // 1. Update status transaksi menjadi CANCELLED di daftar transaksi (Laporan)
       const updatedTrxList = transactions.map(t =>
         t.id === transactionId ? { ...t, status: 'CANCELLED', cancelReason: reason || 'Dibatalkan' } : t
       );
       await AsyncStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(updatedTrxList));
 
-      // 2. Hapus entri kas terkait dari Buku Kas (tidak menambah Kas Keluar)
       const cashEntries = await this.getCashEntries();
       const cleanedCashEntries = cashEntries.filter(c => {
-        // Hapus entri penjualan asli untuk transaksi ini dan entri void terdahulu
         const isOriginalTrxEntry = c.notes && c.notes.includes(transactionId);
         const isVoidEntry = c.id && c.id.startsWith('CASH-VOID-') && c.notes && c.notes.includes(transactionId);
         return !isOriginalTrxEntry && !isVoidEntry;
       });
       await AsyncStorage.setItem(KEYS.CASH_ENTRIES, JSON.stringify(cleanedCashEntries));
+
+      // Sync ke Supabase
+      await supabase
+        .from('transactions')
+        .update({ status: 'CANCELLED', cancel_reason: reason || 'Dibatalkan' })
+        .eq('id', transactionId);
+
+      await supabase
+        .from('cash_entries')
+        .delete()
+        .like('notes', `%${transactionId}%`);
 
       return { updatedTrxList, cleanedCashEntries };
     } catch (e) {
@@ -73,12 +115,25 @@ export const StorageService = {
   // --- CASH FLOW (BUKU KAS) ---
   async getCashEntries() {
     try {
+      const { data, error } = await supabase
+        .from('cash_entries')
+        .select('*')
+        .order('timestamp', { ascending: false });
+
+      if (!error && data) {
+        const filtered = data.filter(e => !e.id?.startsWith('CASH-VOID-') && !e.category?.includes('Pembatalan'));
+        await AsyncStorage.setItem(KEYS.CASH_ENTRIES, JSON.stringify(filtered));
+        return filtered;
+      }
+    } catch (e) {
+      console.log('Reading cash entries from local storage');
+    }
+
+    try {
       const jsonStr = await AsyncStorage.getItem(KEYS.CASH_ENTRIES);
       const data = jsonStr ? JSON.parse(jsonStr) : [];
-      // Filter keluar entri pembatalan transaksi dari Buku Kas (supaya tidak masuk Kas Keluar)
       return data.filter(e => !e.id?.startsWith('CASH-VOID-') && !e.category?.includes('Pembatalan'));
     } catch (e) {
-      console.error('Error reading cash entries', e);
       return [];
     }
   },
@@ -88,6 +143,10 @@ export const StorageService = {
       const existing = await this.getCashEntries();
       const updated = [entry, ...existing];
       await AsyncStorage.setItem(KEYS.CASH_ENTRIES, JSON.stringify(updated));
+
+      // Sync ke Supabase
+      await supabase.from('cash_entries').insert([entry]);
+
       return updated;
     } catch (e) {
       console.error('Error saving cash entry', e);
@@ -97,10 +156,35 @@ export const StorageService = {
   // --- SHIFTS ---
   async getShifts() {
     try {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        const formatted = data.map(s => ({
+          ...s,
+          cashierName: s.cashier_name || s.cashierName,
+          initialCash: s.initial_cash || s.initialCash,
+          startTime: s.start_time || s.startTime,
+          endTime: s.end_time || s.endTime,
+          totalCashSales: s.total_cash_sales || s.totalCashSales,
+          totalQrisSales: s.total_qris_sales || s.totalQrisSales,
+          totalSales: s.total_sales || s.totalSales,
+          expectedPhysicalCash: s.expected_physical_cash || s.expectedPhysicalCash,
+          actualPhysicalCash: s.actual_physical_cash || s.actualPhysicalCash,
+        }));
+        await AsyncStorage.setItem(KEYS.SHIFTS, JSON.stringify(formatted));
+        return formatted;
+      }
+    } catch (e) {
+      console.log('Reading shifts from local storage');
+    }
+
+    try {
       const jsonStr = await AsyncStorage.getItem(KEYS.SHIFTS);
       return jsonStr ? JSON.parse(jsonStr) : [];
     } catch (e) {
-      console.error('Error reading shifts', e);
       return [];
     }
   },
@@ -140,7 +224,6 @@ export const StorageService = {
       if (!activeShift) return null;
 
       const transactions = await this.getTransactions();
-      // Filter transactions made during this active shift
       const shiftTrx = transactions.filter(
         t => new Date(t.timestamp) >= new Date(activeShift.startTime)
       );
@@ -171,6 +254,25 @@ export const StorageService = {
       const shifts = await this.getShifts();
       await AsyncStorage.setItem(KEYS.SHIFTS, JSON.stringify([closedShift, ...shifts]));
       await AsyncStorage.removeItem(KEYS.ACTIVE_SHIFT);
+
+      // Sync shift ke Supabase
+      await supabase.from('shifts').insert([
+        {
+          id: closedShift.id,
+          cashier_name: closedShift.cashierName,
+          initial_cash: closedShift.initialCash,
+          start_time: closedShift.startTime,
+          end_time: closedShift.endTime,
+          status: closedShift.status,
+          total_cash_sales: closedShift.totalCashSales,
+          total_qris_sales: closedShift.totalQrisSales,
+          total_sales: closedShift.totalSales,
+          expected_physical_cash: closedShift.expectedPhysicalCash,
+          actual_physical_cash: closedShift.actualPhysicalCash,
+          discrepancy: closedShift.discrepancy,
+        },
+      ]);
+
       return closedShift;
     } catch (e) {
       console.error('Error closing shift', e);
@@ -179,6 +281,20 @@ export const StorageService = {
 
   // --- PRODUCTS ---
   async getProducts() {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        await AsyncStorage.setItem(KEYS.PRODUCTS, JSON.stringify(data));
+        return data;
+      }
+    } catch (e) {
+      console.log('Reading products from local storage');
+    }
+
     try {
       const jsonStr = await AsyncStorage.getItem(KEYS.PRODUCTS);
       if (jsonStr) return JSON.parse(jsonStr);
@@ -192,8 +308,13 @@ export const StorageService = {
   async addProduct(product) {
     try {
       const existing = await this.getProducts();
-      const updated = [...existing, { ...product, id: Date.now().toString() }];
+      const newProd = { ...product, id: Date.now().toString() };
+      const updated = [...existing, newProd];
       await AsyncStorage.setItem(KEYS.PRODUCTS, JSON.stringify(updated));
+
+      // Sync ke Supabase
+      await supabase.from('products').insert([newProd]);
+
       return updated;
     } catch (e) {
       console.error('Error adding product', e);
@@ -205,6 +326,12 @@ export const StorageService = {
       await AsyncStorage.removeItem(KEYS.TRANSACTIONS);
       await AsyncStorage.removeItem(KEYS.CASH_ENTRIES);
       await AsyncStorage.removeItem(KEYS.SHIFTS);
+
+      // Clear di Supabase
+      await supabase.from('transactions').delete().neq('id', '0');
+      await supabase.from('cash_entries').delete().neq('id', '0');
+      await supabase.from('shifts').delete().neq('id', '0');
+
       return true;
     } catch (e) {
       console.error('Error clearing history', e);
