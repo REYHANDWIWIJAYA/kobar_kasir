@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
+import { supabase } from '../services/supabaseClient';
 import { useRole } from '../context/RoleContext';
 
 export default function BukuKasScreen() {
@@ -22,6 +23,32 @@ export default function BukuKasScreen() {
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    loadCashEntries();
+
+    // 1. Timer Auto-Sync 3 Detik
+    const timer = setInterval(() => {
+      loadCashEntries();
+    }, 3000);
+
+    // 2. Listener Realtime Supabase untuk Buku Kas
+    const channel = supabase
+      .channel('cash-entries-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cash_entries' },
+        () => {
+          loadCashEntries();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {

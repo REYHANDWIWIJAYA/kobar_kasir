@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
+import { supabase } from '../services/supabaseClient';
 import { useRole } from '../context/RoleContext';
 
 export default function LaporanScreen() {
@@ -21,10 +22,31 @@ export default function LaporanScreen() {
 
   useEffect(() => {
     loadReportData();
+
+    // 1. Timer Auto-Sync 3 Detik
     const timer = setInterval(() => {
       loadReportData();
     }, 3000);
-    return () => clearInterval(timer);
+
+    // 2. Realtime WebSocket listener untuk Laporan Penjualan & Cash
+    const channel = supabase
+      .channel('laporan-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions' },
+        () => loadReportData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cash_entries' },
+        () => loadReportData()
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useFocusEffect(
