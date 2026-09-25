@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -47,6 +47,12 @@ export default function KasirScreen() {
   const [newProdPrice, setNewProdPrice] = useState('');
   const [newProdCat, setNewProdCat] = useState('Makanan');
   const [newProdImage, setNewProdImage] = useState('');
+
+  // Pastikan status shift selalu OFF saat aplikasi baru saja dibuka/di-start
+  useEffect(() => {
+    StorageService.clearActiveShift();
+    setActiveShift(null);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {

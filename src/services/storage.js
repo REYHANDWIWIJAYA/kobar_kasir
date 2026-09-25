@@ -114,6 +114,14 @@ export const StorageService = {
     }
   },
 
+  async clearActiveShift() {
+    try {
+      await AsyncStorage.removeItem(KEYS.ACTIVE_SHIFT);
+    } catch (e) {
+      console.error('Error clearing active shift', e);
+    }
+  },
+
   async startShift(cashierName, initialCash) {
     const shift = {
       id: 'SHIFT-' + Date.now().toString().slice(-4),
