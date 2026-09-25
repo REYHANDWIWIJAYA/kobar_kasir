@@ -40,7 +40,10 @@ export default function LaporanScreen() {
   // Hitung Produk Terlaris
   const productStats = {};
   activeTransactions.forEach(t => {
-    t.items.forEach(item => {
+    const itemsList = Array.isArray(t.items)
+      ? t.items
+      : (typeof t.items === 'string' ? (JSON.parse(t.items || '[]')) : []);
+    itemsList.forEach(item => {
       if (!productStats[item.name]) {
         productStats[item.name] = { name: item.name, qty: 0, total: 0 };
       }
@@ -249,7 +252,7 @@ export default function LaporanScreen() {
                       )}
                     </View>
                     <Text style={styles.trxMeta}>
-                      {formatDate(trx.timestamp)} - {trx.items.length} item
+                      {formatDate(trx.timestamp)} - {Array.isArray(trx.items) ? trx.items.length : (typeof trx.items === 'string' ? JSON.parse(trx.items || '[]').length : 0)} item
                     </Text>
                   </View>
                   <Text style={[styles.trxTotal, isCancelled && styles.trxCancelledText]}>
