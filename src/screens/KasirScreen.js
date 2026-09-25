@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
+import ShiftToggleSwitch from '../components/ShiftToggleSwitch';
 
 const { width } = Dimensions.get('window');
 
@@ -26,15 +28,83 @@ export default function KasirScreen() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastTransaction, setLastTransaction] = useState(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Shift Toggle Modals
+  const [showStartShiftModal, setShowStartShiftModal] = useState(false);
+  const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
+  const [initialCashInput, setInitialCashInput] = useState('100000');
+  const [physicalCashInput, setPhysicalCashInput] = useState('');
+  const [closeShiftSummary, setCloseShiftSummary] = useState(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
     const prods = await StorageService.getProducts();
     const shift = await StorageService.getActiveShift();
     setProducts(prods);
     setActiveShift(shift);
+  };
+
+  const handleToggleShift = async () => {
+    if (activeShift) {
+      // Toggle OFF -> Confirm closing shift
+      const transactions = await StorageService.getTransactions();
+      const shiftTrx = transactions.filter(
+        t => new Date(t.timestamp) >= new Date(activeShift.startTime)
+      );
+
+      const cashSales = shiftTrx
+        .filter(t => t.paymentMethod === 'Tunai')
+        .reduce((sum, t) => sum + t.total, 0);
+
+      const qrisSales = shiftTrx
+        .filter(t => t.paymentMethod === 'QRIS')
+        .reduce((sum, t) => sum + t.total, 0);
+
+      const expectedPhysicalCash = activeShift.initialCash + cashSales;
+
+      setCloseShiftSummary({
+        cashSales,
+        qrisSales,
+        expectedPhysicalCash,
+      });
+      setShowCloseShiftModal(true);
+    } else {
+      // Toggle ON -> Confirm starting shift
+      setShowStartShiftModal(true);
+    }
+  };
+
+  const confirmStartShift = async () => {
+    if (isNaN(initialCashInput)) {
+      Alert.alert('Error', 'Masukkan modal awal yang valid.');
+      return;
+    }
+    const shift = await StorageService.startShift('Kasir', initialCashInput);
+    setActiveShift(shift);
+    setShowStartShiftModal(false);
+    Alert.alert('Shift Aktif', 'Selamat bekerja! Status shift sekarang ON.');
+  };
+
+  const confirmCloseShift = async () => {
+    if (physicalCashInput === '' || isNaN(physicalCashInput)) {
+      Alert.alert('Perhatian', 'Masukkan jumlah uang fisik aktual di laci.');
+      return;
+    }
+
+    const closed = await StorageService.closeShift(physicalCashInput);
+    if (closed) {
+      Alert.alert(
+        'Shift Ditutup (OFF)',
+        `Pekerjaan Selesai!\nSelisih Kas: Rp ${closed.discrepancy.toLocaleString('id-ID')}`
+      );
+      setActiveShift(null);
+      setPhysicalCashInput('');
+      setShowCloseShiftModal(false);
+    }
   };
 
   const categories = ['Semua', ...new Set(products.map(p => p.category))];
@@ -159,15 +229,28 @@ export default function KasirScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Header dengan Toggle ON/OFF di Pojok Kanan */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Kasir: {activeShift ? activeShift.cashierName : 'Budi'}</Text>
-          <Text style={styles.headerSub}>Shift: {activeShift ? activeShift.id : 'Aktif'}</Text>
+          <Text style={styles.headerTitle}>Kasir Toko</Text>
+          <Text style={styles.headerSub}>
+            Status: {activeShift ? '🟢 SHIFT ON' : '🔴 SHIFT OFF'}
+          </Text>
         </View>
-        <TouchableOpacity style={styles.cartButtonHeader} onPress={() => setShowCart(true)}>
-          <Text style={styles.cartButtonText}>🛒 ({totalItem})</Text>
-        </TouchableOpacity>
+
+        <View style={styles.headerRightControls}>
+          <TouchableOpacity style={styles.cartButtonHeader} onPress={() => setShowCart(true)}>
+            <Text style={styles.cartButtonText}>🛒 ({totalItem})</Text>
+          </TouchableOpacity>
+
+          {/* Toggle Switch ON / OFF di Pojok Atas Kanan */}
+          <View style={{ marginLeft: 8 }}>
+            <ShiftToggleSwitch
+              isOn={!!activeShift}
+              onToggle={handleToggleShift}
+            />
+          </View>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -226,6 +309,86 @@ export default function KasirScreen() {
         </View>
       )}
 
+      {/* Modal Buka Shift (Turn ON) */}
+      <Modal visible={showStartShiftModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.shiftModalCard}>
+            <Text style={styles.shiftModalTitle}>🚀 Buka Shift (Turn ON)</Text>
+            <Text style={styles.shiftModalSub}>Masukkan modal awal kas di laci meja Anda:</Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              keyboardType="numeric"
+              value={initialCashInput}
+              onChangeText={setInitialCashInput}
+              placeholder="Modal Awal Kas (Rp)"
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelModalBtn}
+                onPress={() => setShowStartShiftModal(false)}
+              >
+                <Text style={styles.cancelModalText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmStartBtn}
+                onPress={confirmStartShift}
+              >
+                <Text style={styles.confirmBtnText}>MULAI SHIFT (ON)</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Tutup Shift (Turn OFF) */}
+      <Modal visible={showCloseShiftModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.shiftModalCard}>
+            <Text style={[styles.shiftModalTitle, { color: '#ff4757' }]}>🔒 Tutup Shift (Turn OFF)</Text>
+
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryRowText}>Ekspektasi Uang Fisik Laci:</Text>
+              <Text style={styles.summaryRowVal}>
+                Rp {(closeShiftSummary?.expectedPhysicalCash || 0).toLocaleString('id-ID')}
+              </Text>
+            </View>
+
+            <Text style={styles.shiftModalSub}>Ketik jumlah uang fisik nyata di laci:</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              keyboardType="numeric"
+              value={physicalCashInput}
+              onChangeText={setPhysicalCashInput}
+              placeholder="Uang Fisik Aktual (Rp)"
+            />
+
+            {physicalCashInput !== '' && !isNaN(physicalCashInput) && (
+              <Text style={styles.discrepancyText}>
+                Selisih Kas: Rp {(Number(physicalCashInput) - (closeShiftSummary?.expectedPhysicalCash || 0)).toLocaleString('id-ID')}
+              </Text>
+            )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelModalBtn}
+                onPress={() => setShowCloseShiftModal(false)}
+              >
+                <Text style={styles.cancelModalText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmCloseBtn}
+                onPress={confirmCloseShift}
+              >
+                <Text style={styles.confirmBtnText}>SELESAI (OFF)</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal Struk Transaksi */}
       <Modal visible={showReceipt} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -269,9 +432,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f6fa' },
   header: { backgroundColor: '#10ac84', padding: 16, paddingTop: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-  headerSub: { color: '#e1b12c', fontSize: 13, fontWeight: '600' },
-  cartButtonHeader: { backgroundColor: '#019069', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-  cartButtonText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  headerSub: { color: '#ffffff', fontSize: 12, opacity: 0.9, marginTop: 2 },
+  headerRightControls: { flexDirection: 'row', alignItems: 'center' },
+  cartButtonHeader: { backgroundColor: '#019069', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+  cartButtonText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
   searchContainer: { padding: 12, backgroundColor: 'white' },
   searchInput: { backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 },
   categoryBar: { paddingHorizontal: 10, paddingVertical: 8, backgroundColor: 'white', maxHeight: 50 },
@@ -307,6 +471,20 @@ const styles = StyleSheet.create({
   bottomCartBtn: { backgroundColor: '#10ac84', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
   bottomCartBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  shiftModalCard: { backgroundColor: 'white', borderRadius: 14, padding: 20, width: '100%' },
+  shiftModalTitle: { fontSize: 18, fontWeight: 'bold', color: '#2ed573', textAlign: 'center', marginBottom: 8 },
+  shiftModalSub: { fontSize: 13, color: '#747d8c', marginBottom: 12 },
+  modalInput: { backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, marginBottom: 14 },
+  summaryBox: { backgroundColor: '#f8f9fa', padding: 12, borderRadius: 8, marginBottom: 12 },
+  summaryRowText: { fontSize: 13, color: '#747d8c' },
+  summaryRowVal: { fontSize: 16, fontWeight: 'bold', color: '#10ac84', marginTop: 2 },
+  discrepancyText: { fontSize: 13, fontWeight: 'bold', color: '#ff4757', marginBottom: 12, textAlign: 'center' },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 },
+  cancelModalBtn: { paddingHorizontal: 16, paddingVertical: 10, marginRight: 8 },
+  cancelModalText: { color: '#747d8c', fontWeight: 'bold' },
+  confirmStartBtn: { backgroundColor: '#2ed573', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
+  confirmCloseBtn: { backgroundColor: '#ff4757', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
+  confirmBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
   receiptCard: { backgroundColor: 'white', borderRadius: 16, padding: 20, width: '100%', elevation: 10 },
   receiptTitle: { fontSize: 20, fontWeight: 'bold', color: '#10ac84', textAlign: 'center', marginBottom: 4 },
   receiptSubtitle: { fontSize: 14, color: '#747d8c', textAlign: 'center', marginBottom: 2 },
