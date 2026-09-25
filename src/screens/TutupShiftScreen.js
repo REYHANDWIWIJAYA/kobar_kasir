@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   TextInput,
   Alert,
   ScrollView,
@@ -11,11 +10,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
+import SwipeButton from '../components/SwipeButton';
 
 export default function TutupShiftScreen() {
   const [activeShift, setActiveShift] = useState(null);
   const [closedShifts, setClosedShifts] = useState([]);
-  const [cashierName, setCashierName] = useState('Budi');
   const [initialCash, setInitialCash] = useState('100000');
   const [physicalCashInput, setPhysicalCashInput] = useState('');
   const [shiftSummary, setShiftSummary] = useState(null);
@@ -75,28 +74,28 @@ export default function TutupShiftScreen() {
   };
 
   const handleStartShift = async () => {
-    if (!cashierName || isNaN(initialCash)) {
-      Alert.alert('Error', 'Masukkan nama kasir dan modal awal yang valid.');
+    if (isNaN(initialCash)) {
+      Alert.alert('Error', 'Masukkan modal awal kas yang valid.');
       return;
     }
 
-    const shift = await StorageService.startShift(cashierName, initialCash);
+    const shift = await StorageService.startShift('Karyawan', initialCash);
     setActiveShift(shift);
     calculateLiveSummary(shift);
-    Alert.alert('Shift Dimulai', `Shift untuk ${cashierName} berhasil dibuka.`);
+    Alert.alert('Shift Dimulai', 'Selamat bekerja! Shift hari ini berhasil dibuka.');
   };
 
   const handleCloseShift = async () => {
-    if (!physicalCashInput || isNaN(physicalCashInput)) {
-      Alert.alert('Error', 'Masukkan jumlah uang fisik di laci saat ini.');
+    if (physicalCashInput === '' || isNaN(physicalCashInput)) {
+      Alert.alert('Perhatian', 'Silakan ketik jumlah uang fisik aktual di laci sebelum menggeser slider.');
       return;
     }
 
     const closed = await StorageService.closeShift(physicalCashInput);
     if (closed) {
       Alert.alert(
-        'Shift Ditutup',
-        `Tutup Shift Berhasil!\nSelisih Kas: Rp ${closed.discrepancy.toLocaleString('id-ID')}`
+        'Tutup Shift Selesai',
+        `Pekerjaan Hari Ini Selesai!\nSelisih Kas: Rp ${closed.discrepancy.toLocaleString('id-ID')}`
       );
       setActiveShift(null);
       setPhysicalCashInput('');
@@ -110,36 +109,35 @@ export default function TutupShiftScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🔒 Tutup Shift Kasir</Text>
+        <Text style={styles.headerTitle}>🔒 Shift & Jam Kerja</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {activeShift ? (
           <View style={styles.card}>
             <View style={styles.badgeOpen}>
-              <Text style={styles.badgeTextOpen}>● SHIFT AKTIF</Text>
+              <Text style={styles.badgeTextOpen}>● SEDANG BEKERJA</Text>
             </View>
 
-            <Text style={styles.shiftCashier}>Kasir: {activeShift.cashierName}</Text>
-            <Text style={styles.shiftMeta}>ID: {activeShift.id}</Text>
+            <Text style={styles.shiftCashier}>Status Toko: Buka</Text>
             <Text style={styles.shiftMeta}>
-              Mulai: {formatDate(activeShift.startTime)}
+              Mulai Kerja: {formatDate(activeShift.startTime)}
             </Text>
 
             <View style={styles.divider} />
 
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>Modal Awal Kas</Text>
+              <Text style={styles.rowLabel}>Modal Awal Laci</Text>
               <Text style={styles.rowVal}>Rp {activeShift.initialCash.toLocaleString('id-ID')}</Text>
             </View>
 
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>Total Penjualan Tunai</Text>
+              <Text style={styles.rowLabel}>Penjualan Tunai</Text>
               <Text style={styles.rowVal}>Rp {(shiftSummary?.cashSales || 0).toLocaleString('id-ID')}</Text>
             </View>
 
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>Total Penjualan QRIS</Text>
+              <Text style={styles.rowLabel}>Penjualan QRIS</Text>
               <Text style={styles.rowVal}>Rp {(shiftSummary?.qrisSales || 0).toLocaleString('id-ID')}</Text>
             </View>
 
@@ -152,7 +150,7 @@ export default function TutupShiftScreen() {
 
             <View style={styles.divider} />
 
-            <Text style={styles.inputLabel}>Jumlah Uang Fisik Aktual di Laci:</Text>
+            <Text style={styles.inputLabel}>Jumlah Uang Fisik Aktual di Laci (Rp):</Text>
             <TextInput
               style={styles.input}
               placeholder="Masukkan Uang Fisik Laci (Rp)"
@@ -180,22 +178,20 @@ export default function TutupShiftScreen() {
               </View>
             )}
 
-            <TouchableOpacity style={styles.closeShiftBtn} onPress={handleCloseShift}>
-              <Text style={styles.closeShiftText}>SELESAI & TUTUP SHIFT</Text>
-            </TouchableOpacity>
+            {/* Slider Slider Tutup Shift / Selesai Kerja */}
+            <Text style={styles.sliderInstruction}>Geser slider di bawah ke kanan untuk menyelesaikan pekerjaan:</Text>
+            <SwipeButton
+              title="GESER UNTUK TUTUP SHIFT"
+              color="#ee5253"
+              onSwipeSuccess={handleCloseShift}
+            />
           </View>
         ) : (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Buka Shift Baru</Text>
-            <Text style={styles.inputLabel}>Nama Kasir</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nama Kasir"
-              value={cashierName}
-              onChangeText={setCashierName}
-            />
+            <Text style={styles.cardTitle}>🚀 Mulai Shift Kerja Baru</Text>
+            <Text style={styles.cardSub}>Geser slider di bawah untuk membuka toko & memulai shift harian.</Text>
 
-            <Text style={styles.inputLabel}>Modal Awal Kas (Laci)</Text>
+            <Text style={styles.inputLabel}>Modal Awal Kas di Laci (Rp):</Text>
             <TextInput
               style={styles.input}
               placeholder="Nominal Modal Awal (Rp)"
@@ -204,35 +200,42 @@ export default function TutupShiftScreen() {
               onChangeText={setInitialCash}
             />
 
-            <TouchableOpacity style={styles.startShiftBtn} onPress={handleStartShift}>
-              <Text style={styles.startShiftText}>BUKA SHIFT SEKARANG</Text>
-            </TouchableOpacity>
+            {/* Slider Mulai Kerja */}
+            <SwipeButton
+              title="GESER UNTUK MULAI KERJA"
+              color="#10ac84"
+              onSwipeSuccess={handleStartShift}
+            />
           </View>
         )}
 
         {/* Riwayat Shift */}
         <Text style={styles.historyTitle}>Riwayat Shift Terakhir</Text>
-        {closedShifts.map(item => (
-          <View key={item.id} style={styles.historyCard}>
-            <View style={styles.historyHeader}>
-              <Text style={styles.historyCashier}>{item.cashierName} ({item.id})</Text>
-              <Text
-                style={[
-                  styles.historySelisih,
-                  { color: item.discrepancy === 0 ? '#10ac84' : '#ee5253' },
-                ]}
-              >
-                Selisih: Rp {item.discrepancy.toLocaleString('id-ID')}
+        {closedShifts.length > 0 ? (
+          closedShifts.map(item => (
+            <View key={item.id} style={styles.historyCard}>
+              <View style={styles.historyHeader}>
+                <Text style={styles.historyCashier}>Shift Selesai ({item.id})</Text>
+                <Text
+                  style={[
+                    styles.historySelisih,
+                    { color: item.discrepancy === 0 ? '#10ac84' : '#ee5253' },
+                  ]}
+                >
+                  Selisih: Rp {item.discrepancy.toLocaleString('id-ID')}
+                </Text>
+              </View>
+              <Text style={styles.historySub}>
+                Waktu: {formatDate(item.startTime)} - {formatDate(item.endTime)}
+              </Text>
+              <Text style={styles.historySub}>
+                Total Penjualan: Rp {(item.totalSales || 0).toLocaleString('id-ID')} (Tunai Rp {(item.totalCashSales || 0).toLocaleString('id-ID')} | QRIS Rp {(item.totalQrisSales || 0).toLocaleString('id-ID')})
               </Text>
             </View>
-            <Text style={styles.historySub}>
-              Mulai: {formatDate(item.startTime)}
-            </Text>
-            <Text style={styles.historySub}>
-              Penjualan: Tunai Rp {item.totalCashSales.toLocaleString('id-ID')} | QRIS Rp {item.totalQrisSales.toLocaleString('id-ID')}
-            </Text>
-          </View>
-        ))}
+          ))
+        ) : (
+          <Text style={styles.emptyText}>Belum ada riwayat shift yang ditutup</Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -242,8 +245,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f6fa' },
   header: { backgroundColor: '#10ac84', padding: 16, paddingTop: 40 },
   headerTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
-  card: { backgroundColor: 'white', borderRadius: 12, padding: 16, elevation: 3, marginBottom: 20 },
-  cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#2f3542', marginBottom: 12 },
+  card: { backgroundColor: 'white', borderRadius: 14, padding: 18, elevation: 3, marginBottom: 20 },
+  cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#2f3542', marginBottom: 4 },
+  cardSub: { fontSize: 13, color: '#747d8c', marginBottom: 14 },
   badgeOpen: { alignSelf: 'flex-start', backgroundColor: '#e1b12c', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginBottom: 10 },
   badgeTextOpen: { color: 'white', fontWeight: 'bold', fontSize: 11 },
   shiftCashier: { fontSize: 18, fontWeight: 'bold', color: '#2f3542' },
@@ -254,19 +258,17 @@ const styles = StyleSheet.create({
   rowVal: { fontSize: 14, fontWeight: 'bold', color: '#2f3542' },
   rowLabelBold: { fontSize: 14, fontWeight: 'bold', color: '#2f3542' },
   rowValHighlight: { fontSize: 16, fontWeight: 'bold', color: '#10ac84' },
-  inputLabel: { fontSize: 13, fontWeight: 'bold', color: '#57606f', marginTop: 10, marginBottom: 4 },
-  input: { backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, marginBottom: 12 },
-  discrepancyBox: { backgroundColor: '#f8f9fa', padding: 12, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  inputLabel: { fontSize: 13, fontWeight: 'bold', color: '#57606f', marginTop: 8, marginBottom: 6 },
+  input: { backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, marginBottom: 10 },
+  discrepancyBox: { backgroundColor: '#f8f9fa', padding: 12, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   discrepancyLabel: { fontSize: 14, color: '#2f3542' },
   discrepancyVal: { fontSize: 15, fontWeight: 'bold' },
-  closeShiftBtn: { backgroundColor: '#ee5253', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 6 },
-  closeShiftText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
-  startShiftBtn: { backgroundColor: '#10ac84', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 },
-  startShiftText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
+  sliderInstruction: { fontSize: 12, color: '#747d8c', textAlign: 'center', marginTop: 10 },
   historyTitle: { fontSize: 16, fontWeight: 'bold', color: '#2f3542', marginBottom: 10 },
   historyCard: { backgroundColor: 'white', padding: 14, borderRadius: 10, marginBottom: 10, elevation: 1 },
   historyHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   historyCashier: { fontSize: 14, fontWeight: 'bold', color: '#2f3542' },
   historySelisih: { fontSize: 13, fontWeight: 'bold' },
   historySub: { fontSize: 12, color: '#747d8c', marginTop: 2 },
+  emptyText: { color: '#a4b0be', fontSize: 13, textAlign: 'center', marginTop: 10 },
 });
