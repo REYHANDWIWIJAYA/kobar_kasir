@@ -181,6 +181,38 @@ export default function KasirScreen() {
     setShowReceipt(true);
   };
 
+  const handleCancelCartTransaction = () => {
+    if (cart.length === 0) return;
+
+    Alert.alert(
+      '🚫 Batalkan Pembelian',
+      `Yakin ingin membatalkan pesanan (Rp ${totalHarga.toLocaleString('id-ID')}) dan mencatat keterangannya di Buku Kas?`,
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Ya, Batalkan',
+          style: 'destructive',
+          onPress: async () => {
+            const itemSummary = cart.map(i => `${i.name} (${i.qty})`).join(', ');
+            // Catat Pembatalan di Buku Kas
+            await StorageService.addCashEntry({
+              id: 'CASH-VOID-' + Date.now().toString().slice(-6),
+              timestamp: new Date().toISOString(),
+              type: 'out',
+              category: 'Pembatalan Pembelian',
+              amount: 0,
+              notes: `Batal Pesanan: ${itemSummary} (Total Rp ${totalHarga.toLocaleString('id-ID')})`,
+            });
+
+            setCart([]);
+            setShowCart(false);
+            Alert.alert('Dibatalkan', 'Pesanan dibatalkan dan catatan berhasil masuk ke Buku Kas.');
+          },
+        },
+      ]
+    );
+  };
+
   if (showCart) {
     return (
       <SafeAreaView style={styles.container}>
@@ -231,6 +263,9 @@ export default function KasirScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.payBtnQris} onPress={() => handleCheckout('QRIS')}>
               <Text style={styles.payBtnTextQris}>📱 Bayar QRIS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelCartBtn} onPress={handleCancelCartTransaction}>
+              <Text style={styles.cancelCartBtnText}>🚫 Batalkan Pembelian</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -469,6 +504,8 @@ const styles = StyleSheet.create({
   payBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   payBtnQris: { backgroundColor: '#0984e3', padding: 14, borderRadius: 10, alignItems: 'center' },
   payBtnTextQris: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  cancelCartBtn: { backgroundColor: '#ffeaa7', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 },
+  cancelCartBtnText: { color: '#d63031', fontWeight: 'bold', fontSize: 15 },
   bottomCartBar: { position: 'absolute', bottom: 10, left: 10, right: 10, backgroundColor: 'white', padding: 14, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
   bottomCartItems: { fontSize: 13, color: '#747d8c' },
   bottomCartTotal: { fontSize: 17, fontWeight: 'bold', color: '#2f3542' },

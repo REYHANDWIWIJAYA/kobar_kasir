@@ -4,8 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -28,13 +26,12 @@ export default function LaporanScreen() {
     setCashEntries(cashData);
   };
 
-  // Only active (non-cancelled) transactions contribute to Omset
   const activeTransactions = transactions.filter(t => t.status !== 'CANCELLED');
   const totalOmset = activeTransactions.reduce((sum, t) => sum + t.total, 0);
   const totalPengeluaran = cashEntries.filter(c => c.type === 'out').reduce((sum, c) => sum + c.amount, 0);
   const labaBersih = totalOmset - totalPengeluaran;
 
-  // Hitung Produk Terlaris (hanya dari transaksi aktif)
+  // Hitung Produk Terlaris
   const productStats = {};
   activeTransactions.forEach(t => {
     t.items.forEach(item => {
@@ -57,25 +54,6 @@ export default function LaporanScreen() {
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
     return `${day} ${month} ${year}, ${hours}:${minutes} WIB`;
-  };
-
-  const handleCancelTransaction = (trx) => {
-    Alert.alert(
-      '🚫 Batalkan Transaksi',
-      `Yakin ingin membatalkan ${trx.id} (Rp ${trx.total.toLocaleString('id-ID')})?\n\nPengembalian uang akan otomatis dicatat sebagai Kas Keluar di Buku Kas.`,
-      [
-        { text: 'Tidak', style: 'cancel' },
-        {
-          text: 'Ya, Batalkan',
-          style: 'destructive',
-          onPress: async () => {
-            await StorageService.cancelTransaction(trx.id, 'Pembatalan oleh Kasir');
-            Alert.alert('Berhasil', `Transaksi ${trx.id} berhasil dibatalkan.`);
-            loadReportData();
-          },
-        },
-      ]
-    );
   };
 
   return (
@@ -113,7 +91,7 @@ export default function LaporanScreen() {
 
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>
-              Transaksi Aktif: {activeTransactions.length} | Batal: {transactions.length - activeTransactions.length}
+              Total Transaksi Berhasil: {activeTransactions.length} Trx
             </Text>
           </View>
         </View>
@@ -143,42 +121,17 @@ export default function LaporanScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>📜 Transaksi Terakhir</Text>
           {transactions.length > 0 ? (
-            transactions.slice(0, 15).map(trx => {
-              const isCancelled = trx.status === 'CANCELLED';
-              return (
-                <View key={trx.id} style={styles.trxRow}>
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.trxTitleRow}>
-                      <Text style={[styles.trxId, isCancelled && styles.trxCancelledText]}>
-                        {trx.id} ({trx.paymentMethod})
-                      </Text>
-                      {isCancelled && (
-                        <View style={styles.cancelledBadge}>
-                          <Text style={styles.cancelledBadgeText}>DIBATALKAN</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.trxMeta}>
-                      {formatDate(trx.timestamp)} - {trx.items.length} item
-                    </Text>
-                  </View>
-
-                  <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                    <Text style={[styles.trxTotal, isCancelled && styles.trxCancelledText]}>
-                      Rp {trx.total.toLocaleString('id-ID')}
-                    </Text>
-                    {!isCancelled && (
-                      <TouchableOpacity
-                        style={styles.cancelTrxBtn}
-                        onPress={() => handleCancelTransaction(trx)}
-                      >
-                        <Text style={styles.cancelTrxBtnText}>🚫 Batalkan</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
+            transactions.slice(0, 15).map(trx => (
+              <View key={trx.id} style={styles.trxRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.trxId}>{trx.id} ({trx.paymentMethod})</Text>
+                  <Text style={styles.trxMeta}>
+                    {formatDate(trx.timestamp)} - {trx.items.length} item
+                  </Text>
                 </View>
-              );
-            })
+                <Text style={styles.trxTotal}>Rp {trx.total.toLocaleString('id-ID')}</Text>
+              </View>
+            ))
           ) : (
             <Text style={styles.emptyText}>Belum ada transaksi terjadi</Text>
           )}
@@ -213,13 +166,7 @@ const styles = StyleSheet.create({
   prodTotal: { fontSize: 14, fontWeight: 'bold', color: '#2f3542' },
   emptyText: { color: '#a4b0be', fontSize: 13, textAlign: 'center', marginVertical: 10 },
   trxRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderColor: '#f1f2f6' },
-  trxTitleRow: { flexDirection: 'row', alignItems: 'center' },
-  trxId: { fontSize: 14, fontWeight: 'bold', color: '#2f3542', marginRight: 6 },
+  trxId: { fontSize: 14, fontWeight: 'bold', color: '#2f3542' },
   trxMeta: { fontSize: 11, color: '#747d8c', marginTop: 2 },
   trxTotal: { fontSize: 14, fontWeight: 'bold', color: '#10ac84' },
-  trxCancelledText: { textDecorationLine: 'line-through', color: '#a4b0be' },
-  cancelledBadge: { backgroundColor: '#ff4757', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  cancelledBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
-  cancelTrxBtn: { marginTop: 4, backgroundColor: '#ffeaa7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  cancelTrxBtnText: { color: '#d63031', fontSize: 11, fontWeight: 'bold' },
 });
