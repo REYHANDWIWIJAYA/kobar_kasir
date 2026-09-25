@@ -1,22 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  FlatList,
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
 
 export default function LaporanScreen() {
   const [transactions, setTransactions] = useState([]);
   const [cashEntries, setCashEntries] = useState([]);
 
-  useEffect(() => {
-    loadReportData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadReportData();
+    }, [])
+  );
 
   const loadReportData = async () => {
     const trxData = await StorageService.getTransactions();
@@ -42,6 +44,17 @@ export default function LaporanScreen() {
   });
 
   const topProducts = Object.values(productStats).sort((a, b) => b.qty - a.qty);
+
+  const formatDate = (isoString) => {
+    const d = new Date(isoString);
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agus', 'Sep', 'Okt', 'Nov', 'Des'];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day} ${month} ${year}, ${hours}:${minutes} WIB`;
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -111,7 +124,7 @@ export default function LaporanScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.trxId}>{trx.id} ({trx.paymentMethod})</Text>
                   <Text style={styles.trxMeta}>
-                    {new Date(trx.timestamp).toLocaleString('id-ID')} - {trx.items.length} item
+                    {formatDate(trx.timestamp)} - {trx.items.length} item
                   </Text>
                 </View>
                 <Text style={styles.trxTotal}>Rp {trx.total.toLocaleString('id-ID')}</Text>

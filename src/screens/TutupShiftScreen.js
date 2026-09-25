@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,9 @@ import {
   TextInput,
   Alert,
   ScrollView,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
 
 export default function TutupShiftScreen() {
@@ -20,9 +20,11 @@ export default function TutupShiftScreen() {
   const [physicalCashInput, setPhysicalCashInput] = useState('');
   const [shiftSummary, setShiftSummary] = useState(null);
 
-  useEffect(() => {
-    loadShiftData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadShiftData();
+    }, [])
+  );
 
   const loadShiftData = async () => {
     const shift = await StorageService.getActiveShift();
@@ -58,6 +60,18 @@ export default function TutupShiftScreen() {
       totalSales: cashSales + qrisSales,
       expectedPhysicalCash,
     });
+  };
+
+  const formatDate = (isoString) => {
+    if (!isoString) return '-';
+    const d = new Date(isoString);
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agus', 'Sep', 'Okt', 'Nov', 'Des'];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day} ${month} ${year}, ${hours}:${minutes} WIB`;
   };
 
   const handleStartShift = async () => {
@@ -109,7 +123,7 @@ export default function TutupShiftScreen() {
             <Text style={styles.shiftCashier}>Kasir: {activeShift.cashierName}</Text>
             <Text style={styles.shiftMeta}>ID: {activeShift.id}</Text>
             <Text style={styles.shiftMeta}>
-              Mulai: {new Date(activeShift.startTime).toLocaleString('id-ID')}
+              Mulai: {formatDate(activeShift.startTime)}
             </Text>
 
             <View style={styles.divider} />
@@ -212,7 +226,7 @@ export default function TutupShiftScreen() {
               </Text>
             </View>
             <Text style={styles.historySub}>
-              Mulai: {new Date(item.startTime).toLocaleString('id-ID')}
+              Mulai: {formatDate(item.startTime)}
             </Text>
             <Text style={styles.historySub}>
               Penjualan: Tunai Rp {item.totalCashSales.toLocaleString('id-ID')} | QRIS Rp {item.totalQrisSales.toLocaleString('id-ID')}

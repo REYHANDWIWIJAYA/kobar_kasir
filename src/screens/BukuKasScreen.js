@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
 
 export default function BukuKasScreen() {
@@ -20,9 +21,11 @@ export default function BukuKasScreen() {
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
 
-  useEffect(() => {
-    loadCashEntries();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadCashEntries();
+    }, [])
+  );
 
   const loadCashEntries = async () => {
     const data = await StorageService.getCashEntries();
@@ -55,6 +58,17 @@ export default function BukuKasScreen() {
   const totalIn = entries.filter(e => e.type === 'in').reduce((sum, e) => sum + e.amount, 0);
   const totalOut = entries.filter(e => e.type === 'out').reduce((sum, e) => sum + e.amount, 0);
   const saldoKas = totalIn - totalOut;
+
+  const formatDate = (isoString) => {
+    const d = new Date(isoString);
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agus', 'Sep', 'Okt', 'Nov', 'Des'];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day} ${month} ${year}, ${hours}:${minutes} WIB`;
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -90,7 +104,7 @@ export default function BukuKasScreen() {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Riwayat Kas</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
-          <Text style={styles.addBtnText}>+ Catat Kas</Text>
+          <Text style={styles.addBtnText}>+ Catat Kas Manual</Text>
         </TouchableOpacity>
       </View>
 
@@ -102,11 +116,16 @@ export default function BukuKasScreen() {
         renderItem={({ item }) => (
           <View style={styles.entryCard}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.entryCategory}>{item.category}</Text>
+              <View style={styles.categoryRow}>
+                <Text style={styles.entryCategory}>{item.category}</Text>
+                {item.category.includes('Penjualan Kasir') && (
+                  <View style={styles.autoBadge}>
+                    <Text style={styles.autoBadgeText}>⚡ Otomatis</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.entryNotes}>{item.notes}</Text>
-              <Text style={styles.entryTime}>
-                {new Date(item.timestamp).toLocaleString('id-ID')}
-              </Text>
+              <Text style={styles.entryTime}>📅 {formatDate(item.timestamp)}</Text>
             </View>
             <Text style={[styles.entryAmount, { color: item.type === 'in' ? '#10ac84' : '#ee5253' }]}>
               {item.type === 'in' ? '+' : '-'} Rp {item.amount.toLocaleString('id-ID')}
@@ -199,8 +218,11 @@ const styles = StyleSheet.create({
   addBtn: { backgroundColor: '#10ac84', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
   addBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
   entryCard: { backgroundColor: 'white', padding: 14, borderRadius: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 1 },
-  entryCategory: { fontSize: 15, fontWeight: 'bold', color: '#2f3542' },
-  entryNotes: { fontSize: 13, color: '#747d8c', marginTop: 2 },
+  categoryRow: { flexDirection: 'row', alignItems: 'center' },
+  entryCategory: { fontSize: 14, fontWeight: 'bold', color: '#2f3542', marginRight: 6 },
+  autoBadge: { backgroundColor: '#e1b12c', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  autoBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  entryNotes: { fontSize: 13, color: '#747d8c', marginTop: 3 },
   entryTime: { fontSize: 11, color: '#a4b0be', marginTop: 4 },
   entryAmount: { fontSize: 15, fontWeight: 'bold' },
   emptyContainer: { alignItems: 'center', marginTop: 40 },

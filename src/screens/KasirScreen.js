@@ -82,6 +82,18 @@ export default function KasirScreen() {
     };
 
     await StorageService.addTransaction(transaction);
+
+    // Otomatis catat Kas Masuk ke Buku Kas
+    const itemSummary = cart.map(i => `${i.name} (${i.qty})`).join(', ');
+    await StorageService.addCashEntry({
+      id: 'CASH-' + Date.now().toString().slice(-6),
+      timestamp: transaction.timestamp,
+      type: 'in',
+      category: `Penjualan Kasir (${paymentMethod})`,
+      amount: totalHarga,
+      notes: `No: ${transaction.id} - ${itemSummary}`,
+    });
+
     setLastTransaction(transaction);
     setCart([]);
     setShowCart(false);
