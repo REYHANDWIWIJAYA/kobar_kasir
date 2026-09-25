@@ -191,6 +191,30 @@ export const StorageService = {
 
   async getActiveShift() {
     try {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('status', 'OPEN')
+        .order('start_time', { ascending: false })
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        const s = data[0];
+        const shiftObj = {
+          id: s.id,
+          cashierName: s.cashier_name || s.cashierName,
+          initialCash: s.initial_cash || s.initialCash,
+          startTime: s.start_time || s.startTime,
+          status: 'OPEN',
+        };
+        await AsyncStorage.setItem(KEYS.ACTIVE_SHIFT, JSON.stringify(shiftObj));
+        return shiftObj;
+      }
+    } catch (e) {
+      console.log('Error fetching active shift from Supabase');
+    }
+
+    try {
       const jsonStr = await AsyncStorage.getItem(KEYS.ACTIVE_SHIFT);
       return jsonStr ? JSON.parse(jsonStr) : null;
     } catch (e) {
@@ -215,6 +239,22 @@ export const StorageService = {
       status: 'OPEN',
     };
     await AsyncStorage.setItem(KEYS.ACTIVE_SHIFT, JSON.stringify(shift));
+
+    // Sync start shift ke Supabase
+    try {
+      await supabase.from('shifts').upsert([
+        {
+          id: shift.id,
+          cashier_name: shift.cashierName,
+          initial_cash: shift.initialCash,
+          start_time: shift.startTime,
+          status: 'OPEN',
+        },
+      ]);
+    } catch (e) {
+      console.error('Error syncing start shift to Supabase', e);
+    }
+
     return shift;
   },
 
@@ -255,15 +295,15 @@ export const StorageService = {
       await AsyncStorage.setItem(KEYS.SHIFTS, JSON.stringify([closedShift, ...shifts]));
       await AsyncStorage.removeItem(KEYS.ACTIVE_SHIFT);
 
-      // Sync shift ke Supabase
-      await supabase.from('shifts').insert([
+      // Sync close shift ke Supabase (ubah status jadi CLOSED)
+      await supabase.from('shifts').upsert([
         {
           id: closedShift.id,
           cashier_name: closedShift.cashierName,
           initial_cash: closedShift.initialCash,
           start_time: closedShift.startTime,
           end_time: closedShift.endTime,
-          status: closedShift.status,
+          status: 'CLOSED',
           total_cash_sales: closedShift.totalCashSales,
           total_qris_sales: closedShift.totalQrisSales,
           total_sales: closedShift.totalSales,
