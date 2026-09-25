@@ -3,20 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  Alert,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
-import SwipeButton from '../components/SwipeButton';
 
 export default function TutupShiftScreen() {
   const [activeShift, setActiveShift] = useState(null);
   const [closedShifts, setClosedShifts] = useState([]);
-  const [initialCash, setInitialCash] = useState('100000');
-  const [physicalCashInput, setPhysicalCashInput] = useState('');
   const [shiftSummary, setShiftSummary] = useState(null);
 
   useFocusEffect(
@@ -73,50 +68,18 @@ export default function TutupShiftScreen() {
     return `${day} ${month} ${year}, ${hours}:${minutes} WIB`;
   };
 
-  const handleStartShift = async () => {
-    if (isNaN(initialCash)) {
-      Alert.alert('Error', 'Masukkan modal awal kas yang valid.');
-      return;
-    }
-
-    const shift = await StorageService.startShift('Karyawan', initialCash);
-    setActiveShift(shift);
-    calculateLiveSummary(shift);
-    Alert.alert('Shift Dimulai', 'Selamat bekerja! Shift hari ini berhasil dibuka.');
-  };
-
-  const handleCloseShift = async () => {
-    if (physicalCashInput === '' || isNaN(physicalCashInput)) {
-      Alert.alert('Perhatian', 'Silakan ketik jumlah uang fisik aktual di laci sebelum menggeser slider.');
-      return;
-    }
-
-    const closed = await StorageService.closeShift(physicalCashInput);
-    if (closed) {
-      Alert.alert(
-        'Tutup Shift Selesai',
-        `Pekerjaan Hari Ini Selesai!\nSelisih Kas: Rp ${closed.discrepancy.toLocaleString('id-ID')}`
-      );
-      setActiveShift(null);
-      setPhysicalCashInput('');
-      setShiftSummary(null);
-      const history = await StorageService.getShifts();
-      setClosedShifts(history);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🔒 Shift & Jam Kerja</Text>
+        <Text style={styles.headerTitle}>🔒 Status Shift & Jam Kerja</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {activeShift ? (
           <View style={styles.card}>
             <View style={styles.badgeOpen}>
-              <Text style={styles.badgeTextOpen}>● SEDANG BEKERJA</Text>
+              <Text style={styles.badgeTextOpen}>● SHIFT AKTIF (ON)</Text>
             </View>
 
             <Text style={styles.shiftCashier}>Status Toko: Buka</Text>
@@ -148,64 +111,26 @@ export default function TutupShiftScreen() {
               </Text>
             </View>
 
-            <View style={styles.divider} />
-
-            <Text style={styles.inputLabel}>Jumlah Uang Fisik Aktual di Laci (Rp):</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Masukkan Uang Fisik Laci (Rp)"
-              keyboardType="numeric"
-              value={physicalCashInput}
-              onChangeText={setPhysicalCashInput}
-            />
-
-            {physicalCashInput !== '' && !isNaN(physicalCashInput) && (
-              <View style={styles.discrepancyBox}>
-                <Text style={styles.discrepancyLabel}>Estimasi Selisih Kas:</Text>
-                <Text
-                  style={[
-                    styles.discrepancyVal,
-                    {
-                      color:
-                        Number(physicalCashInput) - (shiftSummary?.expectedPhysicalCash || 0) === 0
-                          ? '#10ac84'
-                          : '#ee5253',
-                    },
-                  ]}
-                >
-                  Rp {(Number(physicalCashInput) - (shiftSummary?.expectedPhysicalCash || 0)).toLocaleString('id-ID')}
-                </Text>
-              </View>
-            )}
-
-            {/* Slider Slider Tutup Shift / Selesai Kerja */}
-            <Text style={styles.sliderInstruction}>Geser slider di bawah ke kanan untuk menyelesaikan pekerjaan:</Text>
-            <SwipeButton
-              title="GESER UNTUK TUTUP SHIFT"
-              color="#ee5253"
-              onSwipeSuccess={handleCloseShift}
-            />
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                💡 Untuk menutup shift kerja, gunakan **Switch Toggle (ON / OFF)** di pojok kanan atas **Halaman Kasir**.
+              </Text>
+            </View>
           </View>
         ) : (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>🚀 Mulai Shift Kerja Baru</Text>
-            <Text style={styles.cardSub}>Geser slider di bawah untuk membuka toko & memulai shift harian.</Text>
-
-            <Text style={styles.inputLabel}>Modal Awal Kas di Laci (Rp):</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nominal Modal Awal (Rp)"
-              keyboardType="numeric"
-              value={initialCash}
-              onChangeText={setInitialCash}
-            />
-
-            {/* Slider Mulai Kerja */}
-            <SwipeButton
-              title="GESER UNTUK MULAI KERJA"
-              color="#10ac84"
-              onSwipeSuccess={handleStartShift}
-            />
+            <View style={styles.badgeClosed}>
+              <Text style={styles.badgeTextClosed}>● SHIFT MATI (OFF)</Text>
+            </View>
+            <Text style={styles.cardTitle}>Status Toko: Tutup</Text>
+            <Text style={styles.cardSub}>
+              Belum ada shift kerja yang aktif.
+            </Text>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                💡 Untuk memulai shift kerja baru, gunakan **Switch Toggle (ON / OFF)** di pojok kanan atas **Halaman Kasir**.
+              </Text>
+            </View>
           </View>
         )}
 
@@ -247,9 +172,11 @@ const styles = StyleSheet.create({
   headerTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
   card: { backgroundColor: 'white', borderRadius: 14, padding: 18, elevation: 3, marginBottom: 20 },
   cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#2f3542', marginBottom: 4 },
-  cardSub: { fontSize: 13, color: '#747d8c', marginBottom: 14 },
-  badgeOpen: { alignSelf: 'flex-start', backgroundColor: '#e1b12c', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginBottom: 10 },
+  cardSub: { fontSize: 13, color: '#747d8c', marginBottom: 10 },
+  badgeOpen: { alignSelf: 'flex-start', backgroundColor: '#2ed573', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginBottom: 10 },
   badgeTextOpen: { color: 'white', fontWeight: 'bold', fontSize: 11 },
+  badgeClosed: { alignSelf: 'flex-start', backgroundColor: '#ff4757', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginBottom: 10 },
+  badgeTextClosed: { color: 'white', fontWeight: 'bold', fontSize: 11 },
   shiftCashier: { fontSize: 18, fontWeight: 'bold', color: '#2f3542' },
   shiftMeta: { fontSize: 12, color: '#747d8c', marginTop: 2 },
   divider: { height: 1, backgroundColor: '#f1f2f6', marginVertical: 12 },
@@ -258,12 +185,8 @@ const styles = StyleSheet.create({
   rowVal: { fontSize: 14, fontWeight: 'bold', color: '#2f3542' },
   rowLabelBold: { fontSize: 14, fontWeight: 'bold', color: '#2f3542' },
   rowValHighlight: { fontSize: 16, fontWeight: 'bold', color: '#10ac84' },
-  inputLabel: { fontSize: 13, fontWeight: 'bold', color: '#57606f', marginTop: 8, marginBottom: 6 },
-  input: { backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, marginBottom: 10 },
-  discrepancyBox: { backgroundColor: '#f8f9fa', padding: 12, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  discrepancyLabel: { fontSize: 14, color: '#2f3542' },
-  discrepancyVal: { fontSize: 15, fontWeight: 'bold' },
-  sliderInstruction: { fontSize: 12, color: '#747d8c', textAlign: 'center', marginTop: 10 },
+  infoBox: { backgroundColor: '#f1f2f6', padding: 12, borderRadius: 10, marginTop: 14 },
+  infoText: { fontSize: 12, color: '#57606f', lineHeight: 18 },
   historyTitle: { fontSize: 16, fontWeight: 'bold', color: '#2f3542', marginBottom: 10 },
   historyCard: { backgroundColor: 'white', padding: 14, borderRadius: 10, marginBottom: 10, elevation: 1 },
   historyHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
