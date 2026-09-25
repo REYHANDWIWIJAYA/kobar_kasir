@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
+import { supabase } from '../services/supabaseClient';
 import ShiftToggleSwitch from '../components/ShiftToggleSwitch';
 import { useRole } from '../context/RoleContext';
 
@@ -47,6 +48,26 @@ export default function KasirScreen() {
   const [newProdPrice, setNewProdPrice] = useState('');
   const [newProdCat, setNewProdCat] = useState('Makanan');
   const [newProdImage, setNewProdImage] = useState('');
+
+  useEffect(() => {
+    loadData();
+
+    // Listener Realtime Supabase agar status shift otomatis sinkron di semua HP saat ON/OFF
+    const channel = supabase
+      .channel('shift-sync-kasir')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shifts' },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {

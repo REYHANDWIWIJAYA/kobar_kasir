@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { StorageService } from '../services/storage';
+import { supabase } from '../services/supabaseClient';
 import { useRole } from '../context/RoleContext';
 
 export default function TutupShiftScreen() {
@@ -15,6 +16,25 @@ export default function TutupShiftScreen() {
   const [activeShift, setActiveShift] = useState(null);
   const [closedShifts, setClosedShifts] = useState([]);
   const [shiftSummary, setShiftSummary] = useState(null);
+
+  useEffect(() => {
+    loadShiftData();
+
+    const channel = supabase
+      .channel('shift-sync-owner')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shifts' },
+        () => {
+          loadShiftData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {

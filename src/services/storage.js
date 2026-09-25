@@ -198,17 +198,22 @@ export const StorageService = {
         .order('start_time', { ascending: false })
         .limit(1);
 
-      if (!error && data && data.length > 0) {
-        const s = data[0];
-        const shiftObj = {
-          id: s.id,
-          cashierName: s.cashier_name || s.cashierName,
-          initialCash: s.initial_cash || s.initialCash,
-          startTime: s.start_time || s.startTime,
-          status: 'OPEN',
-        };
-        await AsyncStorage.setItem(KEYS.ACTIVE_SHIFT, JSON.stringify(shiftObj));
-        return shiftObj;
+      if (!error && data) {
+        if (data.length > 0) {
+          const s = data[0];
+          const shiftObj = {
+            id: s.id,
+            cashierName: s.cashier_name || s.cashierName,
+            initialCash: Number(s.initial_cash || s.initialCash || 0),
+            startTime: s.start_time || s.startTime,
+            status: 'OPEN',
+          };
+          await AsyncStorage.setItem(KEYS.ACTIVE_SHIFT, JSON.stringify(shiftObj));
+          return shiftObj;
+        } else {
+          await AsyncStorage.removeItem(KEYS.ACTIVE_SHIFT);
+          return null;
+        }
       }
     } catch (e) {
       console.log('Error fetching active shift from Supabase');
