@@ -31,7 +31,7 @@ export default function KasirScreen() {
   // Shift Toggle Modals
   const [showStartShiftModal, setShowStartShiftModal] = useState(false);
   const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
-  const [initialCashInput, setInitialCashInput] = useState('100000');
+  const [initialCashInput, setInitialCashInput] = useState('100.000');
   const [physicalCashInput, setPhysicalCashInput] = useState('');
   const [closeShiftSummary, setCloseShiftSummary] = useState(null);
 
@@ -78,24 +78,35 @@ export default function KasirScreen() {
     }
   };
 
+  const formatNumberInput = (text) => {
+    if (!text) return '';
+    const raw = text.toString().replace(/\D/g, '');
+    if (!raw) return '';
+    return Number(raw).toLocaleString('id-ID');
+  };
+
+  const parseNumberInput = (text) => {
+    if (!text) return 0;
+    const raw = text.toString().replace(/\D/g, '');
+    return Number(raw) || 0;
+  };
+
   const confirmStartShift = async () => {
-    if (isNaN(initialCashInput)) {
-      Alert.alert('Error', 'Masukkan modal awal yang valid.');
-      return;
-    }
-    const shift = await StorageService.startShift('Kasir', initialCashInput);
+    const numericCash = parseNumberInput(initialCashInput);
+    const shift = await StorageService.startShift('Kasir', numericCash);
     setActiveShift(shift);
     setShowStartShiftModal(false);
     Alert.alert('Shift Aktif', 'Selamat bekerja! Status shift sekarang ON.');
   };
 
   const confirmCloseShift = async () => {
-    if (physicalCashInput === '' || isNaN(physicalCashInput)) {
+    if (!physicalCashInput) {
       Alert.alert('Perhatian', 'Masukkan jumlah uang fisik aktual di laci.');
       return;
     }
 
-    const closed = await StorageService.closeShift(physicalCashInput);
+    const numericPhysical = parseNumberInput(physicalCashInput);
+    const closed = await StorageService.closeShift(numericPhysical);
     if (closed) {
       Alert.alert(
         'Shift Ditutup (OFF)',
@@ -320,7 +331,7 @@ export default function KasirScreen() {
               style={styles.modalInput}
               keyboardType="numeric"
               value={initialCashInput}
-              onChangeText={setInitialCashInput}
+              onChangeText={(text) => setInitialCashInput(formatNumberInput(text))}
               placeholder="Modal Awal Kas (Rp)"
             />
 
@@ -354,13 +365,13 @@ export default function KasirScreen() {
               style={styles.modalInput}
               keyboardType="numeric"
               value={physicalCashInput}
-              onChangeText={setPhysicalCashInput}
+              onChangeText={(text) => setPhysicalCashInput(formatNumberInput(text))}
               placeholder="Uang Fisik Aktual (Rp)"
             />
 
-            {physicalCashInput !== '' && !isNaN(physicalCashInput) && (
+            {physicalCashInput !== '' && (
               <Text style={styles.discrepancyText}>
-                Selisih Kas: Rp {(Number(physicalCashInput) - (closeShiftSummary?.expectedPhysicalCash || 0)).toLocaleString('id-ID')}
+                Selisih Kas: Rp {(parseNumberInput(physicalCashInput) - (closeShiftSummary?.expectedPhysicalCash || 0)).toLocaleString('id-ID')}
               </Text>
             )}
 

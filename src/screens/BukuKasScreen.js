@@ -32,8 +32,22 @@ export default function BukuKasScreen() {
     setEntries(data);
   };
 
+  const formatNumberInput = (text) => {
+    if (!text) return '';
+    const raw = text.toString().replace(/\D/g, '');
+    if (!raw) return '';
+    return Number(raw).toLocaleString('id-ID');
+  };
+
+  const parseNumberInput = (text) => {
+    if (!text) return 0;
+    const raw = text.toString().replace(/\D/g, '');
+    return Number(raw) || 0;
+  };
+
   const handleSaveEntry = async () => {
-    if (!category || !amount || isNaN(amount) || Number(amount) <= 0) {
+    const numericAmount = parseNumberInput(amount);
+    if (!category || numericAmount <= 0) {
       Alert.alert('Input Tidak Valid', 'Silakan isi kategori dan jumlah nominal uang dengan benar.');
       return;
     }
@@ -43,7 +57,7 @@ export default function BukuKasScreen() {
       timestamp: new Date().toISOString(),
       type,
       category,
-      amount: Number(amount),
+      amount: numericAmount,
       notes: notes || '-',
     };
 
@@ -174,7 +188,7 @@ export default function BukuKasScreen() {
               placeholder="Jumlah Nominal (Rp)"
               keyboardType="numeric"
               value={amount}
-              onChangeText={setAmount}
+              onChangeText={(text) => setAmount(formatNumberInput(text))}
             />
 
             <TextInput
