@@ -18,10 +18,11 @@ export function RoleProvider({ children }) {
 
   const loadRoleAndPin = async () => {
     try {
-      const savedRole = await AsyncStorage.getItem(KEY_ROLE);
       const savedPin = await AsyncStorage.getItem(KEY_PIN);
-      if (savedRole) setRole(savedRole);
       if (savedPin) setPin(savedPin);
+      // Setiap kali aplikasi baru dibuka, selalu mulai di Mode Kasir demi keamanan
+      setRole('kasir');
+      await AsyncStorage.setItem(KEY_ROLE, 'kasir');
     } catch (e) {
       console.error(e);
     } finally {
