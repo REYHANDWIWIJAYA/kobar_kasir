@@ -121,17 +121,31 @@ export default function LaporanScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>📜 Transaksi Terakhir</Text>
           {transactions.length > 0 ? (
-            transactions.slice(0, 15).map(trx => (
-              <View key={trx.id} style={styles.trxRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.trxId}>{trx.id} ({trx.paymentMethod})</Text>
-                  <Text style={styles.trxMeta}>
-                    {formatDate(trx.timestamp)} - {trx.items.length} item
+            transactions.slice(0, 15).map(trx => {
+              const isCancelled = trx.status === 'CANCELLED';
+              return (
+                <View key={trx.id} style={styles.trxRow}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={[styles.trxId, isCancelled && styles.trxCancelledText]}>
+                        {trx.id} ({trx.paymentMethod})
+                      </Text>
+                      {isCancelled && (
+                        <View style={styles.cancelledBadge}>
+                          <Text style={styles.cancelledBadgeText}>DIBATALKAN</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.trxMeta}>
+                      {formatDate(trx.timestamp)} - {trx.items.length} item
+                    </Text>
+                  </View>
+                  <Text style={[styles.trxTotal, isCancelled && styles.trxCancelledText]}>
+                    Rp {trx.total.toLocaleString('id-ID')}
                   </Text>
                 </View>
-                <Text style={styles.trxTotal}>Rp {trx.total.toLocaleString('id-ID')}</Text>
-              </View>
-            ))
+              );
+            })
           ) : (
             <Text style={styles.emptyText}>Belum ada transaksi terjadi</Text>
           )}
@@ -166,7 +180,10 @@ const styles = StyleSheet.create({
   prodTotal: { fontSize: 14, fontWeight: 'bold', color: '#2f3542' },
   emptyText: { color: '#a4b0be', fontSize: 13, textAlign: 'center', marginVertical: 10 },
   trxRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderColor: '#f1f2f6' },
-  trxId: { fontSize: 14, fontWeight: 'bold', color: '#2f3542' },
+  trxId: { fontSize: 14, fontWeight: 'bold', color: '#2f3542', marginRight: 6 },
   trxMeta: { fontSize: 11, color: '#747d8c', marginTop: 2 },
   trxTotal: { fontSize: 14, fontWeight: 'bold', color: '#10ac84' },
+  trxCancelledText: { textDecorationLine: 'line-through', color: '#a4b0be' },
+  cancelledBadge: { backgroundColor: '#ff4757', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  cancelledBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
 });

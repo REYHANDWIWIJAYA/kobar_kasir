@@ -47,25 +47,23 @@ export const StorageService = {
       const targetTrx = transactions.find(t => t.id === transactionId);
       if (!targetTrx || targetTrx.status === 'CANCELLED') return null;
 
-      // Update status transaksi menjadi CANCELLED
+      // 1. Update status transaksi menjadi CANCELLED di daftar transaksi (Laporan)
       const updatedTrxList = transactions.map(t =>
         t.id === transactionId ? { ...t, status: 'CANCELLED', cancelReason: reason || 'Dibatalkan' } : t
       );
       await AsyncStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(updatedTrxList));
 
-      // Otomatis catat Kas Keluar (Pengembalian Uang) di Buku Kas
-      const itemSummary = targetTrx.items.map(i => `${i.name} (${i.qty})`).join(', ');
-      const cashEntry = {
-        id: 'CASH-VOID-' + Date.now().toString().slice(-6),
-        timestamp: new Date().toISOString(),
-        type: 'out',
-        category: `Pembatalan Transaksi (${targetTrx.paymentMethod})`,
-        amount: targetTrx.total,
-        notes: `Pembatalan No: ${targetTrx.id} - ${itemSummary}${reason ? ` (Alasan: ${reason})` : ''}`,
-      };
-      await this.addCashEntry(cashEntry);
+      // 2. Hapus entri kas terkait dari Buku Kas (tidak menambah Kas Keluar)
+      const cashEntries = await this.getCashEntries();
+      const cleanedCashEntries = cashEntries.filter(c => {
+        // Hapus entri penjualan asli untuk transaksi ini dan entri void terdahulu
+        const isOriginalTrxEntry = c.notes && c.notes.includes(transactionId);
+        const isVoidEntry = c.id && c.id.startsWith('CASH-VOID-') && c.notes && c.notes.includes(transactionId);
+        return !isOriginalTrxEntry && !isVoidEntry;
+      });
+      await AsyncStorage.setItem(KEYS.CASH_ENTRIES, JSON.stringify(cleanedCashEntries));
 
-      return { updatedTrxList, cashEntry };
+      return { updatedTrxList, cleanedCashEntries };
     } catch (e) {
       console.error('Error cancelling transaction', e);
       return null;
@@ -76,7 +74,9 @@ export const StorageService = {
   async getCashEntries() {
     try {
       const jsonStr = await AsyncStorage.getItem(KEYS.CASH_ENTRIES);
-      return jsonStr ? JSON.parse(jsonStr) : [];
+      const data = jsonStr ? JSON.parse(jsonStr) : [];
+      // Filter keluar entri pembatalan transaksi dari Buku Kas (supaya tidak masuk Kas Keluar)
+      return data.filter(e => !e.id?.startsWith('CASH-VOID-') && !e.category?.includes('Pembatalan'));
     } catch (e) {
       console.error('Error reading cash entries', e);
       return [];
