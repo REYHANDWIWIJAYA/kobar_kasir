@@ -191,4 +191,16 @@ export const StorageService = {
       console.error('Error adding product', e);
     }
   },
+
+  async clearAllHistory() {
+    try {
+      await AsyncStorage.removeItem(KEYS.TRANSACTIONS);
+      await AsyncStorage.removeItem(KEYS.CASH_ENTRIES);
+      await AsyncStorage.removeItem(KEYS.SHIFTS);
+      return true;
+    } catch (e) {
+      console.error('Error clearing history', e);
+      return false;
+    }
+  },
 };

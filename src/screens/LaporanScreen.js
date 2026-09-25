@@ -4,6 +4,10 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
+  Platform,
+  Alert,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -58,6 +62,78 @@ export default function LaporanScreen() {
     return `${day} ${month} ${year}, ${hours}:${minutes} WIB`;
   };
 
+  const handleExportCSV = async () => {
+    if (transactions.length === 0) {
+      if (Platform.OS === 'web') {
+        window.alert('Tidak ada data transaksi untuk diexport.');
+      } else {
+        Alert.alert('Info', 'Tidak ada data transaksi untuk diexport.');
+      }
+      return;
+    }
+
+    let csv = 'ID Transaksi,Waktu,Metode Pembayaran,Status,Total (Rp),Item Penjualan\n';
+
+    transactions.forEach(t => {
+      const itemDetails = t.items
+        ? t.items.map(i => `${i.name} (${i.qty}x)`).join('; ')
+        : '';
+      const formattedDate = formatDate(t.timestamp).replace(/,/g, '');
+      const cleanItems = `"${itemDetails.replace(/"/g, '""')}"`;
+      csv += `${t.id},${formattedDate},${t.paymentMethod || 'Tunai'},${t.status || 'SUCCESS'},${t.total},${cleanItems}\n`;
+    });
+
+    if (Platform.OS === 'web') {
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      const dateStr = new Date().toISOString().slice(0, 10);
+      link.setAttribute('download', `Laporan_Penjualan_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      try {
+        await Share.share({
+          title: 'Export Laporan Penjualan',
+          message: csv,
+        });
+      } catch (e) {
+        Alert.alert('Error', 'Gagal membagikan laporan CSV');
+      }
+    }
+  };
+
+  const handleClearHistory = () => {
+    const executeClear = async () => {
+      const success = await StorageService.clearAllHistory();
+      if (success) {
+        await loadReportData();
+        if (Platform.OS === 'web') {
+          window.alert('Riwayat transaksi, buku kas, dan shift berhasil dibersihkan!');
+        } else {
+          Alert.alert('Sukses', 'Riwayat transaksi, buku kas, dan shift berhasil dibersihkan!');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Apakah Anda yakin ingin menghapus SELURUH riwayat transaksi, buku kas, dan shift? Data yang dihapus tidak dapat dikembalikan.')) {
+        executeClear();
+      }
+    } else {
+      Alert.alert(
+        'Bersihkan Riwayat Lama',
+        'Apakah Anda yakin ingin menghapus SELURUH riwayat transaksi, buku kas, dan shift? Data yang dihapus tidak dapat dikembalikan.',
+        [
+          { text: 'Batal', style: 'cancel' },
+          { text: 'Ya, Hapus Semua', style: 'destructive', onPress: executeClear },
+        ]
+      );
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -66,6 +142,40 @@ export default function LaporanScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
+        {/* Fitur Khusus Owner: Export & Maintenance */}
+        {isOwner && (
+          <View style={[styles.card, styles.ownerCard]}>
+            <View style={styles.ownerHeaderRow}>
+              <Text style={styles.ownerCardTitle}>👑 Manajemen & Pemeliharaan Owner</Text>
+              <View style={styles.ownerBadge}>
+                <Text style={styles.ownerBadgeText}>MODE OWNER</Text>
+              </View>
+            </View>
+
+            <Text style={styles.ownerDesc}>
+              Export laporan ke Excel (CSV) untuk pembukuan atau bersihkan riwayat transaksi lama agar penyimpanan perangkat tetap aman & ringan.
+            </Text>
+
+            <View style={styles.ownerActionGrid}>
+              <TouchableOpacity
+                style={styles.exportBtn}
+                onPress={handleExportCSV}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.exportBtnText}>📥 Export Laporan Excel (CSV)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.clearBtn}
+                onPress={handleClearHistory}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.clearBtnText}>🗑️ Bersihkan Riwayat Lama</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Ringkasan Keuangan Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Ringkasan Keuangan</Text>
@@ -163,6 +273,17 @@ const styles = StyleSheet.create({
   headerTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
   card: { backgroundColor: 'white', borderRadius: 12, padding: 16, elevation: 3, marginBottom: 16 },
   cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#2f3542', marginBottom: 12 },
+  ownerCard: { backgroundColor: '#2f3542', borderColor: '#10ac84', borderWidth: 1 },
+  ownerHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  ownerCardTitle: { fontSize: 16, fontWeight: 'bold', color: '#ffffff' },
+  ownerBadge: { backgroundColor: '#10ac84', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  ownerBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  ownerDesc: { fontSize: 12, color: '#c8d6e5', marginBottom: 14, lineHeight: 18 },
+  ownerActionGrid: { gap: 10 },
+  exportBtn: { backgroundColor: '#10ac84', padding: 12, borderRadius: 8, alignItems: 'center' },
+  exportBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  clearBtn: { backgroundColor: '#ff4757', padding: 12, borderRadius: 8, alignItems: 'center' },
+  clearBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
   statsGrid: { flexDirection: 'row', justifyContent: 'space-between' },
   statItem: { flex: 1, alignItems: 'center' },
   statLabel: { fontSize: 12, color: '#747d8c', marginBottom: 4 },
@@ -189,3 +310,4 @@ const styles = StyleSheet.create({
   cancelledBadge: { backgroundColor: '#ff4757', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   cancelledBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
 });
+
