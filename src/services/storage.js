@@ -41,6 +41,37 @@ export const StorageService = {
     }
   },
 
+  async cancelTransaction(transactionId, reason = '') {
+    try {
+      const transactions = await this.getTransactions();
+      const targetTrx = transactions.find(t => t.id === transactionId);
+      if (!targetTrx || targetTrx.status === 'CANCELLED') return null;
+
+      // Update status transaksi menjadi CANCELLED
+      const updatedTrxList = transactions.map(t =>
+        t.id === transactionId ? { ...t, status: 'CANCELLED', cancelReason: reason || 'Dibatalkan' } : t
+      );
+      await AsyncStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(updatedTrxList));
+
+      // Otomatis catat Kas Keluar (Pengembalian Uang) di Buku Kas
+      const itemSummary = targetTrx.items.map(i => `${i.name} (${i.qty})`).join(', ');
+      const cashEntry = {
+        id: 'CASH-VOID-' + Date.now().toString().slice(-6),
+        timestamp: new Date().toISOString(),
+        type: 'out',
+        category: `Pembatalan Transaksi (${targetTrx.paymentMethod})`,
+        amount: targetTrx.total,
+        notes: `Pembatalan No: ${targetTrx.id} - ${itemSummary}${reason ? ` (Alasan: ${reason})` : ''}`,
+      };
+      await this.addCashEntry(cashEntry);
+
+      return { updatedTrxList, cashEntry };
+    } catch (e) {
+      console.error('Error cancelling transaction', e);
+      return null;
+    }
+  },
+
   // --- CASH FLOW (BUKU KAS) ---
   async getCashEntries() {
     try {
