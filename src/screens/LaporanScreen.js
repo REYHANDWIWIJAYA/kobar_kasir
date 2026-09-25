@@ -8,6 +8,8 @@ import {
   Platform,
   Alert,
   Share,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -16,9 +18,13 @@ import { supabase } from '../services/supabaseClient';
 import { useRole } from '../context/RoleContext';
 
 export default function LaporanScreen() {
-  const { isOwner } = useRole();
+  const { isOwner, updatePin } = useRole();
   const [transactions, setTransactions] = useState([]);
   const [cashEntries, setCashEntries] = useState([]);
+
+  // Change PIN State
+  const [showChangePinModal, setShowChangePinModal] = useState(false);
+  const [newPinInput, setNewPinInput] = useState('');
 
   useEffect(() => {
     loadReportData();
@@ -167,6 +173,28 @@ export default function LaporanScreen() {
     }
   };
 
+  const handleSaveNewPin = async () => {
+    if (!newPinInput || newPinInput.length < 4) {
+      if (Platform.OS === 'web') {
+        window.alert('PIN baru harus berupa angka minimal 4 digit.');
+      } else {
+        Alert.alert('PIN Tidak Valid', 'PIN baru harus berupa angka minimal 4 digit.');
+      }
+      return;
+    }
+
+    const success = await updatePin(newPinInput);
+    if (success) {
+      setShowChangePinModal(false);
+      setNewPinInput('');
+      if (Platform.OS === 'web') {
+        window.alert(`PIN Owner berhasil diubah! PIN baru Anda: ${newPinInput}`);
+      } else {
+        Alert.alert('Berhasil', `PIN Owner berhasil diubah! PIN baru Anda: ${newPinInput}`);
+      }
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -175,7 +203,7 @@ export default function LaporanScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        {/* Fitur Khusus Owner: Export & Maintenance */}
+        {/* Fitur Khusus Owner: Export, Maintenance & PIN */}
         {isOwner && (
           <View style={[styles.card, styles.ownerCard]}>
             <View style={styles.ownerHeaderRow}>
@@ -186,7 +214,7 @@ export default function LaporanScreen() {
             </View>
 
             <Text style={styles.ownerDesc}>
-              Export laporan ke Excel (CSV) untuk pembukuan atau bersihkan riwayat transaksi lama agar penyimpanan perangkat tetap aman & ringan.
+              Export laporan ke Excel (CSV), bersihkan riwayat lama, atau ubah PIN keamanan Owner.
             </Text>
 
             <View style={styles.ownerActionGrid}>
@@ -196,6 +224,14 @@ export default function LaporanScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={styles.exportBtnText}>📥 Export Laporan Excel (CSV)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.changePinBtn}
+                onPress={() => setShowChangePinModal(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.changePinBtnText}>🔑 Ubah PIN Owner</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -296,6 +332,43 @@ export default function LaporanScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Modal Ubah PIN Owner */}
+      <Modal visible={showChangePinModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>🔑 Ubah PIN Owner</Text>
+            <Text style={styles.modalSub}>
+              Masukkan 4 digit angka PIN baru untuk keamanan Mode Owner.
+            </Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Masukkan PIN Baru (e.g. 5678)"
+              keyboardType="numeric"
+              maxLength={8}
+              secureTextEntry
+              value={newPinInput}
+              onChangeText={setNewPinInput}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelModalBtn}
+                onPress={() => {
+                  setShowChangePinModal(false);
+                  setNewPinInput('');
+                }}
+              >
+                <Text style={styles.cancelModalText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.savePinBtn} onPress={handleSaveNewPin}>
+                <Text style={styles.savePinText}>Simpan PIN Baru</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -315,6 +388,8 @@ const styles = StyleSheet.create({
   ownerActionGrid: { gap: 10 },
   exportBtn: { backgroundColor: '#10ac84', padding: 12, borderRadius: 8, alignItems: 'center' },
   exportBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  changePinBtn: { backgroundColor: '#0984e3', padding: 12, borderRadius: 8, alignItems: 'center' },
+  changePinBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
   clearBtn: { backgroundColor: '#ff4757', padding: 12, borderRadius: 8, alignItems: 'center' },
   clearBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
   statsGrid: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -342,5 +417,15 @@ const styles = StyleSheet.create({
   trxCancelledText: { textDecorationLine: 'line-through', color: '#a4b0be' },
   cancelledBadge: { backgroundColor: '#ff4757', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   cancelledBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalCard: { backgroundColor: 'white', borderRadius: 14, padding: 20, width: '100%' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#2f3542', textAlign: 'center', marginBottom: 6 },
+  modalSub: { fontSize: 13, color: '#747d8c', textAlign: 'center', marginBottom: 16 },
+  modalInput: { backgroundColor: '#f1f2f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, marginBottom: 16 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' },
+  cancelModalBtn: { paddingHorizontal: 16, paddingVertical: 10, marginRight: 8 },
+  cancelModalText: { color: '#747d8c', fontWeight: 'bold' },
+  savePinBtn: { backgroundColor: '#10ac84', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
+  savePinText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
 });
 
